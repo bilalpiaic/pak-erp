@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Al-Rehman Trading ERP</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0f1729;color:#e2e8f0;font-size:13px}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#1e2a45}
+::-webkit-scrollbar-thumb{background:#3d5080;border-radius:3px}
+input,select,textarea{background:#1e2a45;border:1px solid #3d5080;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:12px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#c9a227}
+button{cursor:pointer;border:none;border-radius:6px;font-size:12px;padding:6px 12px;font-family:inherit}
+table{width:100%;border-collapse:collapse}
+th{background:#1a2540;color:#c9a227;font-weight:600;padding:8px 10px;text-align:left;position:sticky;top:0;z-index:1;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #2d4070}
+td{padding:7px 10px;border-bottom:1px solid #1a2540;font-size:12px}
+tr:hover td{background:rgba(26,37,64,0.5)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.toast{position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;animation:slideIn 0.3s ease;box-shadow:0 4px 20px rgba(0,0,0,0.4)}
+@keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#132040;border:1px solid #2d4070;border-radius:12px;width:100%;max-height:92vh;overflow-y:auto}
+@media print{
+  aside,.no-print{display:none!important}
+  main{overflow:visible!important}
+  body{background:#fff;color:#000}
+  th{background:#eee;color:#000}
+  td{border-color:#ccc}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback,useMemo,useRef}=React;
+
+/* ─── HELPERS ─── */
+const today=()=>{const d=new Date();return`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`};
+const parseDate=s=>{if(!s)return new Date();const p=s.split('-');if(p.length===3)return new Date(p[2],p[1]-1,p[0]);return new Date(s)};
+const pkr=n=>{if(n===undefined||n===null||isNaN(n))return'₨0.00';const neg=n<0;const abs=Math.abs(n);const[i,d]=abs.toFixed(2).split('.');let r='';const rem=i.length%2;for(let k=0;k<i.length;k++){if(k!==0&&(k===rem||(k-rem)%2===0))r+=',';r+=i[k];}return`${neg?'-':''}₨${r}.${d}`};
+const shortPkr=n=>{const abs=Math.abs(n||0);if(abs>=10000000)return`₨${(n/10000000).toFixed(2)}Cr`;if(abs>=100000)return`₨${(n/100000).toFixed(2)}L`;return pkr(n)};
+
+/* ─── SEED DATA ─── */
+const SEED_ACCOUNTS=[
+{id:'1001',code:'1001',name:'Cash in Hand',group:'Current Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1002',code:'1002',name:'Cash at Bank - HBL',group:'Current Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1003',code:'1003',name:'Cash at Bank - MCB',group:'Current Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1010',code:'1010',name:'Trade Debtors',group:'Current Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1020',code:'1020',name:'Stock in Trade',group:'Current Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1030',code:'1030',name:'Advances - Employees',group:'Current Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1040',code:'1040',name:'Prepaid Expenses',group:'Other Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1050',code:'1050',name:'Security Deposits',group:'Other Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1201',code:'1201',name:'Plant & Machinery',group:'Fixed Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1202',code:'1202',name:'Furniture & Fixtures',group:'Fixed Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1203',code:'1203',name:'Motor Vehicles',group:'Fixed Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1204',code:'1204',name:'Land & Building',group:'Fixed Assets',type:'Asset',normalBal:'Debit',active:true},
+{id:'1205',code:'1205',name:'Accum. Depreciation',group:'Fixed Assets',type:'Asset',normalBal:'Credit',active:true},
+{id:'2001',code:'2001',name:'Trade Creditors',group:'Current Liabilities',type:'Liability',normalBal:'Credit',active:true},
+{id:'2002',code:'2002',name:'Accrued Liabilities',group:'Current Liabilities',type:'Liability',normalBal:'Credit',active:true},
+{id:'2003',code:'2003',name:'Sales Tax Payable',group:'Current Liabilities',type:'Liability',normalBal:'Credit',active:true},
+{id:'2004',code:'2004',name:'Income Tax Payable',group:'Current Liabilities',type:'Liability',normalBal:'Credit',active:true},
+{id:'2005',code:'2005',name:'WHT Payable',group:'Current Liabilities',type:'Liability',normalBal:'Credit',active:true},
+{id:'2006',code:'2006',name:'Short-term Loans',group:'Current Liabilities',type:'Liability',normalBal:'Credit',active:true},
+{id:'2201',code:'2201',name:'Long-term Financing',group:'Long-term Liabilities',type:'Liability',normalBal:'Credit',active:true},
+{id:'3001',code:'3001',name:"Owner's Capital",group:'Equity',type:'Equity',normalBal:'Credit',active:true},
+{id:'3002',code:'3002',name:'Retained Earnings',group:'Equity',type:'Equity',normalBal:'Credit',active:true},
+{id:'3003',code:'3003',name:'Drawings',group:'Equity',type:'Equity',normalBal:'Debit',active:true},
+{id:'4001',code:'4001',name:'Sales - Taxable',group:'Revenue',type:'Revenue',normalBal:'Credit',active:true},
+{id:'4002',code:'4002',name:'Sales - Exempt',group:'Revenue',type:'Revenue',normalBal:'Credit',active:true},
+{id:'4003',code:'4003',name:'Other Income',group:'Revenue',type:'Revenue',normalBal:'Credit',active:true},
+{id:'5001',code:'5001',name:'Opening Stock',group:'COGS',type:'Expense',normalBal:'Debit',active:true},
+{id:'5002',code:'5002',name:'Purchases',group:'COGS',type:'Expense',normalBal:'Debit',active:true},
+{id:'5003',code:'5003',name:'Closing Stock',group:'COGS',type:'Expense',normalBal:'Credit',active:true},
+{id:'6001',code:'6001',name:'Salaries & Wages',group:'Operating Expenses',type:'Expense',normalBal:'Debit',active:true},
+{id:'6002',code:'6002',name:'Rent Expense',group:'Operating Expenses',type:'Expense',normalBal:'Debit',active:true},
+{id:'6003',code:'6003',name:'Utility Bills',group:'Operating Expenses',type:'Expense',normalBal:'Debit',active:true},
+{id:'6004',code:'6004',name:'Transport Expense',group:'Operating Expenses',type:'Expense',normalBal:'Debit',active:true},
+{id:'6005',code:'6005',name:'Administrative Expenses',group:'Administrative',type:'Expense',normalBal:'Debit',active:true},
+{id:'6006',code:'6006',name:'Selling Expenses',group:'Selling & Distribution',type:'Expense',normalBal:'Debit',active:true},
+{id:'6007',code:'6007',name:'Depreciation Expense',group:'Operating Expenses',type:'Expense',normalBal:'Debit',active:true},
+{id:'7001',code:'7001',name:'Bank Charges',group:'Financial Charges',type:'Expense',normalBal:'Debit',active:true},
+{id:'7002',code:'7002',name:'Markup / Interest',group:'Financial Charges',type:'Expense',normalBal:'Debit',active:true},
+{id:'8001',code:'8001',name:'Income Tax - Current',group:'Taxation',type:'Expense',normalBal:'Debit',active:true},
+{id:'8002',code:'8002',name:'Sales Tax (GST)',group:'Taxation',type:'Expense',normalBal:'Debit',active:true},
+];
+
+const SEED_VOUCHERS=[
+{id:'v1',type:'JV',no:'JV-001',date:'01-07-2024',ref:'OB-2024',party:'Opening Balances',ntn:'',narration:'Opening balances for FY 2024-25',status:'Posted',wht:false,lines:[
+{acc:'1001',debit:250000,credit:0,narr:'Cash in Hand OB'},
+{acc:'1002',debit:1800000,credit:0,narr:'HBL Bank OB'},
+{acc:'1003',debit:450000,credit:0,narr:'MCB Bank OB'},
+{acc:'1010',debit:2500000,credit:0,narr:'Debtors OB'},
+{acc:'1020',debit:1200000,credit:0,narr:'Stock OB'},
+{acc:'1201',debit:3500000,credit:0,narr:'Machinery OB'},
+{acc:'1202',debit:800000,credit:0,narr:'Furniture OB'},
+{acc:'1204',debit:5000000,credit:0,narr:'Land OB'},
+{acc:'1205',debit:0,credit:1200000,narr:'Accum Dep OB'},
+{acc:'2001',debit:0,credit:1800000,narr:'Creditors OB'},
+{acc:'2201',debit:0,credit:2500000,narr:'LT Loan OB'},
+{acc:'3001',debit:0,credit:9000000,narr:"Owner's Capital OB"},
+{acc:'3002',debit:0,credit:1000000,narr:'Retained Earnings OB'},
+]},
+{id:'v2',type:'BRV',no:'BRV-001',date:'05-07-2024',ref:'INV-0701',party:'Karachi Traders',ntn:'2345678-9',narration:'Receipt against sales invoice',status:'Posted',wht:false,lines:[
+{acc:'1002',debit:590000,credit:0,narr:'HBL receipt'},
+{acc:'4001',debit:0,credit:500000,narr:'Sales taxable'},
+{acc:'2003',debit:0,credit:90000,narr:'GST 18%'},
+]},
+{id:'v3',type:'BPV',no:'BPV-001',date:'10-07-2024',ref:'PO-0702',party:'Pak Steel Ltd',ntn:'3456789-0',narration:'Payment for raw material purchase',status:'Posted',wht:true,lines:[
+{acc:'5002',debit:800000,credit:0,narr:'Purchases'},
+{acc:'2001',debit:0,credit:784000,narr:'Net payable'},
+{acc:'2005',debit:0,credit:16000,narr:'WHT 2% deducted'},
+]},
+{id:'v4',type:'CPV',no:'CPV-001',date:'15-07-2024',ref:'SAL-JUL24',party:'Staff',ntn:'',narration:'Monthly salaries July 2024',status:'Posted',wht:false,lines:[
+{acc:'6001',debit:450000,credit:0,narr:'Gross salaries'},
+{acc:'1001',debit:0,credit:435000,narr:'Net paid cash'},
+{acc:'2004',debit:0,credit:15000,narr:'Income tax withheld'},
+]},
+{id:'v5',type:'BPV',no:'BPV-002',date:'20-07-2024',ref:'RENT-JUL',party:'Al-Noor Properties',ntn:'4567890-1',narration:'Office rent July 2024',status:'Posted',wht:true,lines:[
+{acc:'6002',debit:120000,credit:0,narr:'Rent expense'},
+{acc:'2005',debit:0,credit:12000,narr:'WHT 10%'},
+{acc:'1002',debit:0,credit:108000,narr:'Net paid HBL'},
+]},
+{id:'v6',type:'BRV',no:'BRV-002',date:'25-07-2024',ref:'INV-0703',party:'Lahore Distributors',ntn:'5678901-2',narration:'Sales receipt - exempt goods',status:'Posted',wht:false,lines:[
+{acc:'1002',debit:350000,credit:0,narr:'HBL receipt'},
+{acc:'4002',debit:0,credit:350000,narr:'Sales exempt'},
+]},
+{id:'v7',type:'JV',no:'JV-002',date:'31-07-2024',ref:'DEP-JUL',party:'Internal',ntn:'',narration:'Monthly depreciation July 2024',status:'Posted',wht:false,lines:[
+{acc:'6007',debit:75000,credit:0,narr:'Depreciation charge'},
+{acc:'1205',debit:0,credit:75000,narr:'Accum depreciation'},
+]},
+{id:'v8',type:'BPV',no:'BPV-003',date:'05-08-2024',ref:'UTIL-AUG',party:'LESCO',ntn:'',narration:'Electricity bill August 2024',status:'Posted',wht:false,lines:[
+{acc:'6003',debit:85000,credit:0,narr:'Utility expense'},
+{acc:'1002',debit:0,credit:85000,narr:'Paid via HBL'},
+]},
+{id:'v9',type:'BRV',no:'BRV-003',date:'12-08-2024',ref:'INV-0801',party:'Multan Traders',ntn:'6789012-3',narration:'Sales receipt with GST',status:'Posted',wht:false,lines:[
+{acc:'1002',debit:826000,credit:0,narr:'HBL receipt'},
+{acc:'4001',debit:0,credit:700000,narr:'Sales taxable'},
+{acc:'2003',debit:0,credit:126000,narr:'GST 18%'},
+]},
+{id:'v10',type:'BPV',no:'BPV-004',date:'20-08-2024',ref:'PO-0803',party:'Faisalabad Mills',ntn:'7890123-4',narration:'Purchase payment',status:'Posted',wht:true,lines:[
+{acc:'5002',debit:600000,credit:0,narr:'Purchases'},
+{acc:'2001',debit:0,credit:588000,narr:'Net payable'},
+{acc:'2005',debit:0,credit:12000,narr:'WHT 2%'},
+]},
+{id:'v11',type:'JV',no:'JV-003',date:'30-09-2024',ref:'ADJ-SEP',party:'Internal',ntn:'',narration:'Stock adjustment & admin provisions',status:'Posted',wht:false,lines:[
+{acc:'1020',debit:0,credit:200000,narr:'Stock reduction'},
+{acc:'6005',debit:200000,credit:0,narr:'Admin expenses'},
+]},
+{id:'v12',type:'CRV',no:'CRV-001',date:'15-09-2024',ref:'MISC-001',party:'Misc',ntn:'',narration:'Miscellaneous cash receipt',status:'Posted',wht:false,lines:[
+{acc:'1001',debit:50000,credit:0,narr:'Cash received'},
+{acc:'4003',debit:0,credit:50000,narr:'Other income'},
+]},
+];
+
+const SEED_COMPANY={name:'Al-Rehman Trading Co. (Pvt.) Ltd.',ntn:'1234567-8',strn:'12-34-5678-001-56',address:'123 Gulberg III, Lahore, Punjab',contact:'042-35761234',email:'accounts@alrehman.com.pk',fiscalStart:'07'};
+
+const SAMPLE_DEBTORS=[
+{id:'d1',name:'Karachi Traders',ntn:'2345678-9',outstandingDays:25,amount:590000},
+{id:'d2',name:'Lahore Distributors',ntn:'5678901-2',outstandingDays:45,amount:350000},
+{id:'d3',name:'Multan Traders',ntn:'6789012-3',outstandingDays:75,amount:826000},
+{id:'d4',name:'Rawalpindi Co.',ntn:'8901234-5',outstandingDays:100,amount:420000},
+{id:'d5',name:'Islamabad Stores',ntn:'9012345-6',outstandingDays:135,amount:280000},
+];
+
+const SAMPLE_CREDITORS=[
+{id:'c1',name:'Pak Steel Ltd',ntn:'3456789-0',outstandingDays:20,amount:784000,whtStatus:'Deducted'},
+{id:'c2',name:'Al-Noor Properties',ntn:'4567890-1',outstandingDays:10,amount:108000,whtStatus:'Deducted'},
+{id:'c3',name:'Faisalabad Mills',ntn:'7890123-4',outstandingDays:40,amount:588000,whtStatus:'Deducted'},
+{id:'c4',name:'Sukkur Suppliers',ntn:'0123456-7',outstandingDays:65,amount:320000,whtStatus:'Pending'},
+{id:'c5',name:'Sialkot Exports',ntn:'1234567-1',outstandingDays:90,amount:175000,whtStatus:'Pending'},
+];
+
+/* ─── localStorage hook ─── */
+function useLS(key,init){
+  const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}catch{return init;}});
+  useEffect(()=>{try{localStorage.setItem(key,JSON.stringify(val));}catch{}},[key,val]);
+  return[val,setVal];
+}
+
+/* ─── TOAST ─── */
+function Toast({msg,type,onClose}){
+  useEffect(()=>{const t=setTimeout(onClose,3500);return()=>clearTimeout(t);},[onClose]);
+  const bg=type==='error'?'#c0392b':type==='warn'?'#d97706':'#16a34a';
+  return <div className="toast" style={{background:bg,color:'#fff'}}>{msg}</div>;
+}
+
+/* ─── MODAL ─── */
+function Modal({title,onClose,children,wide}){
+  return(
+    <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div className="modal-box" style={{maxWidth:wide?'1100px':'720px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px',borderBottom:'1px solid #2d4070',position:'sticky',top:0,background:'#132040',zIndex:10}}>
+          <span style={{color:'#c9a227',fontWeight:700,fontSize:15}}>{title}</span>
+          <button onClick={onClose} style={{background:'transparent',color:'#94a3b8',fontSize:20,lineHeight:1}}>×</button>
+        </div>
+        <div style={{padding:'20px'}}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── MAIN APP ─── */
+function App(){
+  const[accounts,setAccounts]=useLS('erp_accounts',SEED_ACCOUNTS);
+  const[vouchers,setVouchers]=useLS('erp_vouchers',SEED_VOUCHERS);
+  const[company,setCompany]=useLS('erp_company',SEED_COMPANY);
+  const[mod,setMod]=useState('dashboard');
+  const[toast,setToast]=useState(null);
+  const showToast=useCallback((msg,type='success')=>setToast({msg,type}),[]);
+  const clearToast=useCallback(()=>setToast(null),[]);
+
+  const acctMap=useMemo(()=>{const m={};accounts.forEach(a=>m[a.code]=a);return m;},[accounts]);
+
+  const getBalance=useCallback((code,vList=vouchers)=>{
+    let dr=0,cr=0;
+    vList.filter(v=>v.status==='Posted').forEach(v=>v.lines.forEach(l=>{if(l.acc===code){dr+=l.debit||0;cr+=l.credit||0;}}));
+    return{dr,cr,net:dr-cr};
+  },[vouchers]);
+
+  const nav=[
+    {id:'dashboard',icon:'🏠',label:'Dashboard'},
+    {id:'coa',icon:'📋',label:'Chart of Accounts'},
+    {id:'voucher',icon:'✏️',label:'Voucher Entry'},
+    {id:'journal',icon:'📖',label:'General Journal'},
+    {id:'ledger',icon:'📒',label:'Account Ledger'},
+    {id:'reports',icon:'📊',label:'Reports'},
+    {id:'settings',icon:'⚙️',label:'Settings'},
+  ];
+
+  return(
+    <div style={{display:'flex',height:'100vh',overflow:'hidden'}}>
+      {toast&&<Toast msg={toast.msg} type={toast.type} onClose={clearToast}/>}
+      {/* SIDEBAR */}
+      <aside style={{width:210,background:'#0a1628',borderRight:'1px solid #1a3060',display:'flex',flexDirection:'column',flexShrink:0}} className="no-print">
+        <div style={{padding:'16px 14px',borderBottom:'1px solid #1a3060'}}>
+          <div style={{color:'#c9a227',fontWeight:700,fontSize:12,lineHeight:1.4}}>{company.name}</div>
+          <div style={{color:'#475569',fontSize:10,marginTop:3}}>NTN: {company.ntn}</div>
+          <div style={{color:'#475569',fontSize:10}}>STRN: {company.strn}</div>
+        </div>
+        <nav style={{flex:1,overflowY:'auto',padding:'6px 0'}}>
+          {nav.map(n=>(
+            <button key={n.id} onClick={()=>setMod(n.id)}
+              style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'10px 14px',
+                background:mod===n.id?'#1a3565':'transparent',
+                color:mod===n.id?'#c9a227':'#94a3b8',
+                textAlign:'left',borderRadius:0,fontSize:12,
+                fontWeight:mod===n.id?600:400,
+                borderLeft:mod===n.id?'3px solid #c9a227':'3px solid transparent'}}>
+              <span style={{fontSize:15}}>{n.icon}</span>{n.label}
+            </button>
+          ))}
+        </nav>
+        <div style={{padding:'10px 14px',borderTop:'1px solid #1a3060',color:'#334155',fontSize:10}}>
+          FY Jul–Jun 2024-25 | PKR ₨
+        </div>
+      </aside>
+      {/* MAIN */}
+      <main style={{flex:1,overflow:'auto',background:'#0f1729'}}>
+        {mod==='dashboard'&&<Dashboard accounts={accounts} vouchers={vouchers} getBalance={getBalance} company={company} setMod={setMod}/>}
+        {mod==='coa'&&<COA accounts={accounts} setAccounts={setAccounts} vouchers={vouchers} showToast={showToast}/>}
+        {mod==='voucher'&&<VoucherEntry vouchers={vouchers} setVouchers={setVouchers} accounts={accounts} showToast={showToast}/>}
+        {mod==='journal'&&<Journal vouchers={vouchers} acctMap={acctMap}/>}
+        {mod==='ledger'&&<Ledger accounts={accounts} vouchers={vouchers}/>}
+        {mod==='reports'&&<Reports accounts={accounts} vouchers={vouchers} acctMap={acctMap} getBalance={getBalance} company={company}/>}
+        {mod==='settings'&&<Settings company={company} setCompany={setCompany} showToast={showToast}/>}
+      </main>
+    </div>
+  );
+}
+
+/* ─── DASHBOARD ─── */
+function Dashboard({accounts,vouchers,getBalance,company,setMod}){
+  const posted=vouchers.filter(v=>v.status==='Posted');
+  const totalAssets=accounts.filter(a=>a.type==='Asset').reduce((s,a)=>{const b=getBalance(a.code);return s+(a.normalBal==='Debit'?b.dr-b.cr:b.cr-b.dr);},0);
+  const totalLiab=accounts.filter(a=>a.type==='Liability').reduce((s,a)=>{const b=getBalance(a.code);return s+(b.cr-b.dr);},0);
+  const now=new Date();
+  const mtdV=posted.filter(v=>{const d=parseDate(v.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  const revMTD=accounts.filter(a=>a.type==='Revenue').reduce((s,a)=>{let c=0;mtdV.forEach(v=>v.lines.forEach(l=>{if(l.acc===a.code)c+=l.credit||0}));return s+c;},0);
+  const expMTD=accounts.filter(a=>a.type==='Expense').reduce((s,a)=>{let d=0;mtdV.forEach(v=>v.lines.forEach(l=>{if(l.acc===a.code)d+=l.debit||0}));return s+d;},0);
+  const cashBal=['1001','1002','1003'].reduce((s,c)=>{const b=getBalance(c);return s+b.dr-b.cr;},0);
+  const kpis=[
+    {l:'Total Assets',v:shortPkr(totalAssets),c:'#3b82f6'},
+    {l:'Total Liabilities',v:shortPkr(totalLiab),c:'#ef4444'},
+    {l:'Revenue MTD',v:shortPkr(revMTD),c:'#22c55e'},
+    {l:'Expenses MTD',v:shortPkr(expMTD),c:'#f59e0b'},
+    {l:'Net Profit MTD',v:shortPkr(revMTD-expMTD),c:revMTD>=expMTD?'#22c55e':'#ef4444'},
+    {l:'Cash & Bank',v:shortPkr(cashBal),c:'#a78bfa'},
+  ];
+  const recent=[...vouchers].sort((a,b)=>parseDate(b.date)-parseDate(a.date)).slice(0,10);
+  return(
+    <div style={{padding:24}}>
+      <div style={{marginBottom:20}}>
+        <h1 style={{color:'#c9a227',fontSize:20,fontWeight:700}}>{company.name}</h1>
+        <div style={{color:'#64748b',fontSize:12}}>Accounting Dashboard — FY 2024-25 | ICAP / IAS-IFRS Standards</div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:24}}>
+        {kpis.map(k=>(
+          <div key={k.l} style={{background:'#132040',border:`1px solid #1e3060`,borderLeft:`3px solid ${k.c}`,borderRadius:10,padding:'14px 18px'}}>
+            <div style={{color:'#64748b',fontSize:10,textTransform:'uppercase',letterSpacing:0.6,marginBottom:5}}>{k.l}</div>
+            <div style={{color:k.c,fontSize:22,fontWeight:700}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,overflow:'hidden'}}>
+        <div style={{padding:'10px 16px',borderBottom:'1px solid #1e3060',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <span style={{color:'#c9a227',fontWeight:600,fontSize:13}}>Recent Transactions</span>
+          <button onClick={()=>setMod('journal')} style={{background:'#1e3060',color:'#93c5fd',fontSize:11}}>View All →</button>
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table>
+            <thead><tr><th>Date</th><th>Voucher No.</th><th>Party</th><th>Type</th><th>Narration</th><th style={{textAlign:'right'}}>Amount (Dr)</th><th>Status</th></tr></thead>
+            <tbody>
+              {recent.map(v=>{
+                const amt=v.lines.reduce((s,l)=>s+(l.debit||0),0);
+                return(
+                  <tr key={v.id}>
+                    <td>{v.date}</td>
+                    <td style={{color:'#c9a227',fontWeight:600}}>{v.no}</td>
+                    <td>{v.party}</td>
+                    <td><span className="badge" style={{background:'#1e3060',color:'#93c5fd'}}>{v.type}</span></td>
+                    <td style={{color:'#94a3b8',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{v.narration}</td>
+                    <td style={{textAlign:'right',fontFamily:'monospace'}}>{pkr(amt)}</td>
+                    <td><span className="badge" style={{background:v.status==='Posted'?'#14532d':'#713f12',color:v.status==='Posted'?'#86efac':'#fde68a'}}>{v.status}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── CHART OF ACCOUNTS ─── */
+function COA({accounts,setAccounts,vouchers,showToast}){
+  const[search,setSearch]=useState('');
+  const[typeF,setTypeF]=useState('All');
+  const[modal,setModal]=useState(null);
+  const blank={code:'',name:'',group:'Current Assets',type:'Asset',normalBal:'Debit',active:true};
+  const[form,setForm]=useState(blank);
+  const groups=['Current Assets','Fixed Assets','Other Assets','Current Liabilities','Long-term Liabilities','Equity','Revenue','COGS','Operating Expenses','Administrative','Selling & Distribution','Financial Charges','Taxation'];
+  const hasTxn=code=>vouchers.some(v=>v.lines.some(l=>l.acc===code));
+  const filt=accounts.filter(a=>{
+    if(typeF!=='All'&&a.type!==typeF)return false;
+    return a.code.includes(search)||a.name.toLowerCase().includes(search.toLowerCase())||a.group.toLowerCase().includes(search.toLowerCase());
+  });
+  const typeColor={Asset:'#3b82f6',Liability:'#ef4444',Equity:'#a78bfa',Revenue:'#22c55e',Expense:'#f59e0b'};
+  const save=()=>{
+    if(!form.code.trim()||!form.name.trim()){showToast('Code and Name required','error');return;}
+    if(modal==='new'){
+      if(accounts.find(a=>a.code===form.code)){showToast('Code already exists','error');return;}
+      setAccounts(p=>[...p,{...form,id:form.code}]);showToast('Account created');
+    }else{
+      setAccounts(p=>p.map(a=>a.code===form.code?{...form,id:form.code}:a));showToast('Account updated');
+    }
+    setModal(null);
+  };
+  const del=a=>{
+    if(hasTxn(a.code)){showToast('Cannot delete — transactions exist','error');return;}
+    if(!window.confirm(`Delete "${a.name}"?`))return;
+    setAccounts(p=>p.filter(x=>x.code!==a.code));showToast('Account deleted');
+  };
+  return(
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+        <h2 style={{color:'#c9a227',fontSize:17,fontWeight:700}}>Chart of Accounts</h2>
+        <button onClick={()=>{setForm(blank);setModal('new');}} style={{background:'#c9a227',color:'#0a1628',fontWeight:700,padding:'8px 18px'}}>+ New Account</button>
+      </div>
+      <div style={{display:'flex',gap:10,marginBottom:14}}>
+        <input placeholder="Search code / name / group..." value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:300}}/>
+        <select value={typeF} onChange={e=>setTypeF(e.target.value)} style={{width:140}}>
+          <option>All</option><option>Asset</option><option>Liability</option><option>Equity</option><option>Revenue</option><option>Expense</option>
+        </select>
+        <div style={{marginLeft:'auto',color:'#64748b',fontSize:11,alignSelf:'center'}}>{filt.length} accounts</div>
+      </div>
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,overflow:'auto',maxHeight:'72vh'}}>
+        <table>
+          <thead><tr><th>Code</th><th>Account Name</th><th>Group</th><th>Type</th><th>Normal Bal</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            {filt.map(a=>(
+              <tr key={a.code}>
+                <td style={{color:'#c9a227',fontWeight:600,fontFamily:'monospace'}}>{a.code}</td>
+                <td style={{fontWeight:500}}>{a.name}</td>
+                <td style={{color:'#94a3b8'}}>{a.group}</td>
+                <td><span className="badge" style={{background:'#1e3060',color:typeColor[a.type]||'#94a3b8'}}>{a.type}</span></td>
+                <td style={{color:'#64748b'}}>{a.normalBal}</td>
+                <td><span className="badge" style={{background:a.active?'#14532d':'#3b1f1f',color:a.active?'#86efac':'#fca5a5'}}>{a.active?'Active':'Inactive'}</span></td>
+                <td>
+                  <div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>{setForm({...a});setModal('edit');}} style={{background:'#1e3060',color:'#93c5fd',padding:'4px 10px'}}>Edit</button>
+                    <button onClick={()=>del(a)} style={{background:'#3b1f1f',color:'#fca5a5',padding:'4px 10px'}}>Del</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {modal&&(
+        <Modal title={modal==='new'?'New Account':'Edit Account'} onClose={()=>setModal(null)}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+            {[['code','Account Code *',true,modal==='edit'],['name','Account Name *',false,false]].map(([k,l,_,ro])=>(
+              <div key={k}><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:4}}>{l}</label>
+              <input value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} readOnly={ro} style={ro?{background:'#0f1729'}:{}}/></div>
+            ))}
+            <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:4}}>Group</label>
+              <select value={form.group} onChange={e=>setForm(p=>({...p,group:e.target.value}))}>{groups.map(g=><option key={g}>{g}</option>)}</select></div>
+            <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:4}}>Type</label>
+              <select value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))}>
+                <option>Asset</option><option>Liability</option><option>Equity</option><option>Revenue</option><option>Expense</option>
+              </select></div>
+            <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:4}}>Normal Balance</label>
+              <select value={form.normalBal} onChange={e=>setForm(p=>({...p,normalBal:e.target.value}))}><option>Debit</option><option>Credit</option></select></div>
+            <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:4}}>Status</label>
+              <select value={form.active?'Active':'Inactive'} onChange={e=>setForm(p=>({...p,active:e.target.value==='Active'}))}>
+                <option>Active</option><option>Inactive</option></select></div>
+          </div>
+          <div style={{display:'flex',gap:10,marginTop:18,justifyContent:'flex-end'}}>
+            <button onClick={()=>setModal(null)} style={{background:'#1e3060',color:'#94a3b8',padding:'8px 16px'}}>Cancel</button>
+            <button onClick={save} style={{background:'#c9a227',color:'#0a1628',fontWeight:700,padding:'8px 20px'}}>Save Account</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ─── VOUCHER ENTRY ─── */
+const VTYPES=['BPV','BRV','CPV','CRV','JV'];
+const VNAMES={BPV:'Bank Payment Voucher',BRV:'Bank Receipt Voucher',CPV:'Cash Payment Voucher',CRV:'Cash Receipt Voucher',JV:'Journal Voucher'};
+
+function VoucherEntry({vouchers,setVouchers,accounts,showToast}){
+  const[view,setView]=useState('list');
+  const[editV,setEditV]=useState(null);
+  const[typeF,setTypeF]=useState('All');
+  const[search,setSearch]=useState('');
+  const filt=vouchers.filter(v=>{
+    if(typeF!=='All'&&v.type!==typeF)return false;
+    return v.no.includes(search)||v.party.toLowerCase().includes(search.toLowerCase())||v.narration.toLowerCase().includes(search.toLowerCase());
+  }).sort((a,b)=>parseDate(b.date)-parseDate(a.date));
+
+  const openNew=t=>{
+    const n=vouchers.filter(v=>v.type===t).length+1;
+    setEditV({id:'v'+Date.now(),type:t,no:`${t}-${String(n).padStart(3,'0')}`,date:today(),ref:'',party:'',ntn:'',narration:'',status:'Draft',wht:false,
+      lines:[{acc:'',debit:0,credit:0,narr:''},{acc:'',debit:0,credit:0,narr:''}]});
+    setView('form');
+  };
+  const del=id=>{
+    if(!window.confirm('Delete this voucher?'))return;
+    setVouchers(p=>p.filter(v=>v.id!==id));showToast('Voucher deleted');
+  };
+  if(view==='form')return(
+    <VoucherForm voucher={editV} accounts={accounts}
+      onSave={v=>{setVouchers(p=>{const i=p.findIndex(x=>x.id===v.id);if(i>=0){const n=[...p];n[i]=v;return n;}return[...p,v];});
+        showToast(v.status==='Posted'?'✓ Voucher posted!':'Draft saved');setView('list');}}
+      onCancel={()=>setView('list')} showToast={showToast}/>
+  );
+  return(
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+        <h2 style={{color:'#c9a227',fontSize:17,fontWeight:700}}>Voucher Entry</h2>
+        <div style={{display:'flex',gap:8}}>
+          {VTYPES.map(t=>(
+            <button key={t} onClick={()=>openNew(t)} style={{background:'#1a3565',color:'#c9a227',fontWeight:600,fontSize:11,padding:'7px 13px',border:'1px solid #2d5090'}}>
+              + {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{display:'flex',gap:10,marginBottom:14}}>
+        <input placeholder="Search vouchers..." value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:280}}/>
+        <select value={typeF} onChange={e=>setTypeF(e.target.value)} style={{width:120}}>
+          <option>All</option>{VTYPES.map(t=><option key={t}>{t}</option>)}
+        </select>
+        <div style={{marginLeft:'auto',color:'#64748b',fontSize:11,alignSelf:'center'}}>{filt.length} vouchers</div>
+      </div>
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,overflow:'auto',maxHeight:'72vh'}}>
+        <table>
+          <thead><tr><th>Voucher No.</th><th>Date</th><th>Type</th><th>Party</th><th>Reference</th><th>WHT</th><th style={{textAlign:'right'}}>Amount (₨)</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            {filt.map(v=>{
+              const amt=v.lines.reduce((s,l)=>s+(l.debit||0),0);
+              return(
+                <tr key={v.id}>
+                  <td style={{color:'#c9a227',fontWeight:600}}>{v.no}</td>
+                  <td>{v.date}</td>
+                  <td><span className="badge" style={{background:'#1e3060',color:'#93c5fd'}}>{v.type}</span></td>
+                  <td>{v.party}</td>
+                  <td style={{color:'#64748b'}}>{v.ref}</td>
+                  <td>{v.wht?<span className="badge" style={{background:'#713f12',color:'#fde68a'}}>WHT</span>:''}</td>
+                  <td style={{textAlign:'right',fontFamily:'monospace'}}>{pkr(amt)}</td>
+                  <td><span className="badge" style={{background:v.status==='Posted'?'#14532d':'#713f12',color:v.status==='Posted'?'#86efac':'#fde68a'}}>{v.status}</span></td>
+                  <td>
+                    <div style={{display:'flex',gap:6}}>
+                      <button onClick={()=>{setEditV({...v,lines:v.lines.map(l=>({...l}))});setView('form');}} style={{background:'#1e3060',color:'#93c5fd',padding:'4px 10px'}}>Open</button>
+                      <button onClick={()=>del(v.id)} style={{background:'#3b1f1f',color:'#fca5a5',padding:'4px 10px'}}>Del</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function VoucherForm({voucher,accounts,onSave,onCancel,showToast}){
+  const[v,setV]=useState(voucher);
+  const actv=accounts.filter(a=>a.active).sort((a,b)=>a.code.localeCompare(b.code));
+  const sf=(f,val)=>setV(p=>({...p,[f]:val}));
+  const sl=(i,f,val)=>setV(p=>{const ls=[...p.lines];ls[i]={...ls[i],[f]:f==='debit'||f==='credit'?parseFloat(val)||0:val};return{...p,lines:ls};});
+  const totDr=v.lines.reduce((s,l)=>s+(l.debit||0),0);
+  const totCr=v.lines.reduce((s,l)=>s+(l.credit||0),0);
+  const balanced=Math.abs(totDr-totCr)<0.01;
+  const save=status=>{
+    if(status==='Posted'&&!balanced){showToast('Debit must equal Credit to post','error');return;}
+    if(totDr===0&&totCr===0){showToast('Enter at least one amount','warn');return;}
+    onSave({...v,status,lines:v.lines.filter(l=>l.acc&&(l.debit>0||l.credit>0))});
+  };
+  return(
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+        <div>
+          <h2 style={{color:'#c9a227',fontSize:16,fontWeight:700}}>{VNAMES[v.type]}</h2>
+          <div style={{color:'#64748b',fontSize:11}}>{v.no} | {v.status}</div>
+        </div>
+        <button onClick={onCancel} style={{background:'#1e3060',color:'#94a3b8',padding:'7px 14px'}}>← Back to List</button>
+      </div>
+      {/* Header */}
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,padding:20,marginBottom:14}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:14}}>
+          <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:3}}>Voucher No.</label>
+            <input value={v.no} readOnly style={{background:'#0f1729'}}/></div>
+          <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:3}}>Date (DD-MM-YYYY)</label>
+            <input value={v.date} onChange={e=>sf('date',e.target.value)} placeholder="DD-MM-YYYY"/></div>
+          <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:3}}>Reference No. (Cheque/Invoice)</label>
+            <input value={v.ref} onChange={e=>sf('ref',e.target.value)}/></div>
+          <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:3}}>Party Name</label>
+            <input value={v.party} onChange={e=>sf('party',e.target.value)}/></div>
+          <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:3}}>NTN / CNIC (FBR Reference)</label>
+            <input value={v.ntn} onChange={e=>sf('ntn',e.target.value)} placeholder="Optional"/></div>
+          <div style={{display:'flex',alignItems:'center',gap:12,paddingTop:18}}>
+            <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',color:'#94a3b8',fontSize:12,userSelect:'none'}}>
+              <input type="checkbox" checked={v.wht} onChange={e=>sf('wht',e.target.checked)} style={{width:'auto',cursor:'pointer',accentColor:'#c9a227'}}/>
+              WHT Applicable
+            </label>
+          </div>
+        </div>
+        <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:3}}>Narration / Description</label>
+          <textarea value={v.narration} onChange={e=>sf('narration',e.target.value)} rows={2} style={{resize:'vertical'}}/></div>
+      </div>
+      {/* Lines */}
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,overflow:'auto',marginBottom:12}}>
+        <table>
+          <thead>
+            <tr>
+              <th style={{width:35}}>#</th>
+              <th style={{width:110}}>Acc. Code</th>
+              <th>Account Name</th>
+              <th style={{width:150,textAlign:'right'}}>Debit (₨)</th>
+              <th style={{width:150,textAlign:'right'}}>Credit (₨)</th>
+              <th>Line Narration</th>
+              <th style={{width:45}}>Del</th>
+            </tr>
+          </thead>
+          <tbody>
+            {v.lines.map((l,i)=>(
+              <tr key={i}>
+                <td style={{color:'#475569'}}>{i+1}</td>
+                <td>
+                  <select value={l.acc} onChange={e=>sl(i,'acc',e.target.value)} style={{fontSize:11,padding:'5px 6px'}}>
+                    <option value="">--Select--</option>
+                    {actv.map(a=><option key={a.code} value={a.code}>{a.code}</option>)}
+                  </select>
+                </td>
+                <td style={{color:'#94a3b8',fontSize:11}}>{l.acc&&actv.find(a=>a.code===l.acc)?.name||'—'}</td>
+                <td><input type="number" value={l.debit||''} onChange={e=>sl(i,'debit',e.target.value)} style={{textAlign:'right'}} min={0} step={0.01}/></td>
+                <td><input type="number" value={l.credit||''} onChange={e=>sl(i,'credit',e.target.value)} style={{textAlign:'right'}} min={0} step={0.01}/></td>
+                <td><input value={l.narr} onChange={e=>sl(i,'narr',e.target.value)} placeholder="Line detail"/></td>
+                <td>
+                  <button onClick={()=>setV(p=>({...p,lines:p.lines.filter((_,j)=>j!==i)}))} style={{background:'#3b1f1f',color:'#fca5a5',padding:'4px 8px'}}>✕</button>
+                </td>
+              </tr>
+            ))}
+            {/* Totals row */}
+            <tr style={{background:'#1a2540',borderTop:'2px solid #2d4070'}}>
+              <td colSpan={3} style={{color:'#c9a227',fontWeight:700,textAlign:'right',fontSize:12}}>TOTALS</td>
+              <td style={{textAlign:'right',color:'#86efac',fontWeight:700,fontFamily:'monospace'}}>{pkr(totDr)}</td>
+              <td style={{textAlign:'right',color:'#fca5a5',fontWeight:700,fontFamily:'monospace'}}>{pkr(totCr)}</td>
+              <td colSpan={2} style={{textAlign:'center'}}>
+                {balanced
+                  ?<span className="badge" style={{background:'#14532d',color:'#86efac',fontSize:11}}>✓ Balanced</span>
+                  :<span className="badge" style={{background:'#7f1d1d',color:'#fca5a5',fontSize:11}}>Diff: {pkr(Math.abs(totDr-totCr))}</span>}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style={{display:'flex',gap:10,alignItems:'center'}}>
+        <button onClick={()=>setV(p=>({...p,lines:[...p.lines,{acc:'',debit:0,credit:0,narr:''}]}))} style={{background:'#1e3060',color:'#93c5fd'}}>+ Add Line</button>
+        <div style={{flex:1}}/>
+        <button onClick={()=>save('Draft')} style={{background:'#713f12',color:'#fde68a',fontWeight:600,padding:'8px 18px'}}>Save Draft</button>
+        <button onClick={()=>save('Posted')} style={{background:balanced?'#c9a227':'#3d3d3d',color:balanced?'#0a1628':'#666',fontWeight:700,padding:'8px 22px'}} disabled={!balanced}>
+          {balanced?'✓ Post Voucher':'Post (Balance First)'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── GENERAL JOURNAL ─── */
+function Journal({vouchers,acctMap}){
+  const[from,setFrom]=useState('01-07-2024');
+  const[to,setTo]=useState(today());
+  const[typeF,setTypeF]=useState('All');
+  const[search,setSearch]=useState('');
+
+  const rows=[];
+  vouchers.filter(v=>v.status==='Posted').forEach(v=>{
+    const d=parseDate(v.date);
+    if(d<parseDate(from)||d>parseDate(to))return;
+    if(typeF!=='All'&&v.type!==typeF)return;
+    v.lines.forEach(l=>{
+      const an=acctMap[l.acc]?.name||l.acc;
+      if(search&&![v.no,an,v.party,v.ref,l.narr||''].some(x=>x.toLowerCase().includes(search.toLowerCase())))return;
+      rows.push({date:v.date,no:v.no,type:v.type,ac:l.acc,an,debit:l.debit||0,credit:l.credit||0,narr:l.narr||v.narration,ref:v.ref,party:v.party});
+    });
+  });
+  rows.sort((a,b)=>parseDate(a.date)-parseDate(b.date)||(a.no>b.no?1:-1));
+  const totDr=rows.reduce((s,r)=>s+r.debit,0);
+  const totCr=rows.reduce((s,r)=>s+r.credit,0);
+
+  const csv=()=>{
+    const h='Date,Voucher No,Type,Acc Code,Account Name,Debit,Credit,Narration,Reference\n';
+    const d=rows.map(r=>`${r.date},${r.no},${r.type},${r.ac},"${r.an}",${r.debit},${r.credit},"${r.narr}","${r.ref}"`).join('\n');
+    const b=new Blob([h+d],{type:'text/csv'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`journal_${from}_${to}.csv`;a.click();
+  };
+
+  return(
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+        <h2 style={{color:'#c9a227',fontSize:17,fontWeight:700}}>General Journal</h2>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={csv} style={{background:'#1e3060',color:'#93c5fd'}}>⬇ Export CSV</button>
+          <button onClick={()=>window.print()} style={{background:'#1e3060',color:'#94a3b8'}}>🖨 Print</button>
+        </div>
+      </div>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'flex-end'}}>
+        {[['From',from,setFrom],['To',to,setTo]].map(([l,v,s])=>(
+          <div key={l}><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:2}}>{l}</label>
+          <input value={v} onChange={e=>s(e.target.value)} style={{width:130}}/></div>
+        ))}
+        <div><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:2}}>Type</label>
+          <select value={typeF} onChange={e=>setTypeF(e.target.value)} style={{width:110}}>
+            <option>All</option>{VTYPES.map(t=><option key={t}>{t}</option>)}
+          </select></div>
+        <div style={{flex:1}}><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:2}}>Search</label>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Voucher / Account / Party..."/></div>
+        <div style={{color:'#64748b',fontSize:11,alignSelf:'flex-end',paddingBottom:4}}>{rows.length} entries</div>
+      </div>
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,overflow:'auto',maxHeight:'65vh'}}>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Voucher</th><th>Type</th><th>Acc.Code</th><th>Account Name</th>
+              <th>Party</th><th>Ref</th><th style={{textAlign:'right'}}>Debit (₨)</th><th style={{textAlign:'right'}}>Credit (₨)</th><th>Narration</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r,i)=>(
+              <tr key={i}>
+                <td>{r.date}</td>
+                <td style={{color:'#c9a227',fontWeight:600}}>{r.no}</td>
+                <td><span className="badge" style={{background:'#1e3060',color:'#93c5fd'}}>{r.type}</span></td>
+                <td style={{fontFamily:'monospace',color:'#c9a227'}}>{r.ac}</td>
+                <td>{r.an}</td>
+                <td style={{color:'#94a3b8'}}>{r.party}</td>
+                <td style={{color:'#64748b',fontSize:11}}>{r.ref}</td>
+                <td style={{textAlign:'right',color:'#86efac',fontFamily:'monospace'}}>{r.debit>0?pkr(r.debit):''}</td>
+                <td style={{textAlign:'right',color:'#fca5a5',fontFamily:'monospace'}}>{r.credit>0?pkr(r.credit):''}</td>
+                <td style={{color:'#94a3b8',fontSize:11,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.narr}</td>
+              </tr>
+            ))}
+            <tr style={{background:'#1a2540',borderTop:'2px solid #c9a227'}}>
+              <td colSpan={7} style={{color:'#c9a227',fontWeight:700}}>GRAND TOTAL ({rows.length} lines)</td>
+              <td style={{textAlign:'right',color:'#22c55e',fontWeight:700,fontFamily:'monospace'}}>{pkr(totDr)}</td>
+              <td style={{textAlign:'right',color:Math.abs(totDr-totCr)<1?'#22c55e':'#ef4444',fontWeight:700,fontFamily:'monospace'}}>{pkr(totCr)}</td>
+              <td style={{textAlign:'center'}}>
+                {Math.abs(totDr-totCr)<1
+                  ?<span className="badge" style={{background:'#14532d',color:'#86efac'}}>✓ Balanced</span>
+                  :<span className="badge" style={{background:'#7f1d1d',color:'#fca5a5'}}>Diff: {pkr(Math.abs(totDr-totCr))}</span>}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ─── ACCOUNT LEDGER ─── */
+function Ledger({accounts,vouchers}){
+  const[sel,setSel]=useState('1002');
+  const[from,setFrom]=useState('01-07-2024');
+  const[to,setTo]=useState(today());
+  const posted=vouchers.filter(v=>v.status==='Posted');
+  const acc=accounts.find(a=>a.code===sel);
+
+  const openBal=posted.filter(v=>parseDate(v.date)<parseDate(from))
+    .reduce((s,v)=>{v.lines.forEach(l=>{if(l.acc===sel){s.dr+=l.debit||0;s.cr+=l.credit||0;}});return s;},{dr:0,cr:0});
+
+  const txns=[];
+  posted.filter(v=>{const d=parseDate(v.date);return d>=parseDate(from)&&d<=parseDate(to);}).forEach(v=>{
+    v.lines.forEach(l=>{if(l.acc===sel)txns.push({date:v.date,no:v.no,type:v.type,debit:l.debit||0,credit:l.credit||0,narr:l.narr||v.narration,party:v.party});});
+  });
+  txns.sort((a,b)=>parseDate(a.date)-parseDate(b.date));
+  let run=openBal.dr-openBal.cr;
+  const rows=txns.map(t=>{run+=t.debit-t.credit;return{...t,bal:run};});
+  const finalBal=run;
+  const totDr=rows.reduce((s,r)=>s+r.debit,0);
+  const totCr=rows.reduce((s,r)=>s+r.credit,0);
+
+  return(
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+        <h2 style={{color:'#c9a227',fontSize:17,fontWeight:700}}>Account Ledger</h2>
+        <button onClick={()=>window.print()} style={{background:'#1e3060',color:'#93c5fd'}}>🖨 Print</button>
+      </div>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'flex-end'}}>
+        <div style={{flex:2}}><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:2}}>Select Account</label>
+          <select value={sel} onChange={e=>setSel(e.target.value)}>
+            {accounts.filter(a=>a.active).sort((a,b)=>a.code.localeCompare(b.code)).map(a=><option key={a.code} value={a.code}>{a.code} — {a.name}</option>)}
+          </select></div>
+        {[['From',from,setFrom],['To',to,setTo]].map(([l,v,s])=>(
+          <div key={l}><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:2}}>{l}</label>
+          <input value={v} onChange={e=>s(e.target.value)} style={{width:130}}/></div>
+        ))}
+      </div>
+      {acc&&(
+        <div style={{display:'flex',gap:12,marginBottom:14,flexWrap:'wrap'}}>
+          {[
+            {l:'Account',v:`${acc.code} — ${acc.name}`,s:`${acc.group} | ${acc.type} | Normal: ${acc.normalBal}`,c:'#c9a227'},
+            {l:'Opening Balance',v:pkr(Math.abs(openBal.dr-openBal.cr)),s:(openBal.dr>=openBal.cr?'Debit':'Credit')+' balance',c:'#e2e8f0'},
+            {l:'Period Debits',v:pkr(totDr),s:`${rows.length} transactions`,c:'#86efac'},
+            {l:'Period Credits',v:pkr(totCr),s:'',c:'#fca5a5'},
+            {l:'Closing Balance',v:pkr(Math.abs(finalBal)),s:(finalBal>=0?'Debit':'Credit')+' balance',c:finalBal>=0?'#86efac':'#fca5a5'},
+          ].map(x=>(
+            <div key={x.l} style={{background:'#132040',border:'1px solid #1e3060',borderRadius:8,padding:'10px 16px',flex:1,minWidth:160}}>
+              <div style={{color:'#64748b',fontSize:10,textTransform:'uppercase',letterSpacing:0.5}}>{x.l}</div>
+              <div style={{color:x.c,fontWeight:700,fontSize:14,marginTop:3}}>{x.v}</div>
+              {x.s&&<div style={{color:'#475569',fontSize:10,marginTop:2}}>{x.s}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,overflow:'auto',maxHeight:'55vh'}}>
+        <table>
+          <thead><tr><th>Date</th><th>Voucher No.</th><th>Type</th><th>Particulars</th><th style={{textAlign:'right'}}>Debit (₨)</th><th style={{textAlign:'right'}}>Credit (₨)</th><th style={{textAlign:'right'}}>Balance (₨)</th></tr></thead>
+          <tbody>
+            <tr style={{background:'#1a2540'}}>
+              <td colSpan={4} style={{color:'#94a3b8',fontSize:11,fontStyle:'italic'}}>Opening Balance</td>
+              <td style={{textAlign:'right',color:'#86efac',fontFamily:'monospace'}}>{openBal.dr>0?pkr(openBal.dr):''}</td>
+              <td style={{textAlign:'right',color:'#fca5a5',fontFamily:'monospace'}}>{openBal.cr>0?pkr(openBal.cr):''}</td>
+              <td style={{textAlign:'right',fontWeight:600,color:openBal.dr>=openBal.cr?'#86efac':'#fca5a5',fontFamily:'monospace'}}>
+                {pkr(Math.abs(openBal.dr-openBal.cr))} {openBal.dr>=openBal.cr?'Dr':'Cr'}
+              </td>
+            </tr>
+            {rows.map((r,i)=>(
+              <tr key={i}>
+                <td>{r.date}</td>
+                <td style={{color:'#c9a227',fontWeight:600}}>{r.no}</td>
+                <td><span className="badge" style={{background:'#1e3060',color:'#93c5fd'}}>{r.type}</span></td>
+                <td>{r.party}{r.narr&&<span style={{color:'#64748b',fontSize:11}}> — {r.narr}</span>}</td>
+                <td style={{textAlign:'right',color:'#86efac',fontFamily:'monospace'}}>{r.debit>0?pkr(r.debit):''}</td>
+                <td style={{textAlign:'right',color:'#fca5a5',fontFamily:'monospace'}}>{r.credit>0?pkr(r.credit):''}</td>
+                <td style={{textAlign:'right',fontWeight:600,color:r.bal>=0?'#e2e8f0':'#fca5a5',fontFamily:'monospace'}}>
+                  {pkr(Math.abs(r.bal))} {r.bal>=0?'Dr':'Cr'}
+                </td>
+              </tr>
+            ))}
+            <tr style={{background:'#1a2540',borderTop:'2px solid #c9a227'}}>
+              <td colSpan={4} style={{color:'#c9a227',fontWeight:700}}>CLOSING BALANCE</td>
+              <td style={{textAlign:'right',color:'#86efac',fontWeight:700,fontFamily:'monospace'}}>{pkr(totDr)}</td>
+              <td style={{textAlign:'right',color:'#fca5a5',fontWeight:700,fontFamily:'monospace'}}>{pkr(totCr)}</td>
+              <td style={{textAlign:'right',fontWeight:700,color:finalBal>=0?'#86efac':'#fca5a5',fontSize:13,fontFamily:'monospace'}}>
+                {pkr(Math.abs(finalBal))} {finalBal>=0?'Dr':'Cr'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ─── REPORTS ─── */
+function Reports({accounts,vouchers,acctMap,getBalance,company}){
+  const[rep,setRep]=useState('TB');
+  const[from,setFrom]=useState('01-07-2024');
+  const[to,setTo]=useState(today());
+  const reps=[{id:'TB',l:'Trial Balance'},{id:'BS',l:'Balance Sheet'},{id:'PL',l:'P & L Account'},{id:'CF',l:'Cash Flow'},{id:'DR',l:'Debtors Aging'},{id:'CR',l:'Creditors Aging'}];
+
+  const getBalTo=useCallback((code)=>{
+    const posted=vouchers.filter(v=>v.status==='Posted'&&parseDate(v.date)<=parseDate(to));
+    let dr=0,cr=0;
+    posted.forEach(v=>v.lines.forEach(l=>{if(l.acc===code){dr+=l.debit||0;cr+=l.credit||0;}}));
+    return{dr,cr};
+  },[vouchers,to]);
+
+  const getPeriodBal=useCallback((code)=>{
+    const posted=vouchers.filter(v=>v.status==='Posted'&&parseDate(v.date)>=parseDate(from)&&parseDate(v.date)<=parseDate(to));
+    let dr=0,cr=0;
+    posted.forEach(v=>v.lines.forEach(l=>{if(l.acc===code){dr+=l.debit||0;cr+=l.credit||0;}}));
+    return{dr,cr};
+  },[vouchers,from,to]);
+
+  const getPrevBal=useCallback((code)=>{
+    const posted=vouchers.filter(v=>v.status==='Posted'&&parseDate(v.date)<parseDate(from));
+    let dr=0,cr=0;
+    posted.forEach(v=>v.lines.forEach(l=>{if(l.acc===code){dr+=l.debit||0;cr+=l.credit||0;}}));
+    return{dr,cr};
+  },[vouchers,from]);
+
+  return(
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+        <h2 style={{color:'#c9a227',fontSize:17,fontWeight:700}}>Financial Reports</h2>
+        <button onClick={()=>window.print()} className="no-print" style={{background:'#1e3060',color:'#93c5fd'}}>🖨 Print Report</button>
+      </div>
+      <div className="no-print" style={{display:'flex',gap:0,marginBottom:14,background:'#132040',border:'1px solid #1e3060',borderRadius:8,overflow:'hidden',width:'fit-content'}}>
+        {reps.map(r=>(
+          <button key={r.id} onClick={()=>setRep(r.id)}
+            style={{padding:'8px 16px',background:rep===r.id?'#c9a227':'transparent',color:rep===r.id?'#0a1628':'#94a3b8',fontWeight:rep===r.id?700:400,borderRadius:0,fontSize:12}}>
+            {r.l}
+          </button>
+        ))}
+      </div>
+      <div className="no-print" style={{display:'flex',gap:10,marginBottom:14}}>
+        {[['From',from,setFrom],['To / As at',to,setTo]].map(([l,v,s])=>(
+          <div key={l}><label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:2}}>{l}</label>
+          <input value={v} onChange={e=>s(e.target.value)} style={{width:140}}/></div>
+        ))}
+      </div>
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,overflow:'hidden'}}>
+        <div style={{padding:'16px 20px',borderBottom:'1px solid #1e3060',textAlign:'center'}}>
+          <div style={{color:'#c9a227',fontWeight:700,fontSize:15}}>{company.name}</div>
+          <div style={{color:'#64748b',fontSize:11}}>NTN: {company.ntn} | STRN: {company.strn} | {company.address}</div>
+          <div style={{color:'#e2e8f0',fontWeight:600,fontSize:14,marginTop:6}}>{reps.find(r=>r.id===rep)?.l}</div>
+          <div style={{color:'#475569',fontSize:11}}>For the period {from} to {to} | Amounts in PKR (₨)</div>
+        </div>
+        <div style={{padding:20,overflowX:'auto'}}>
+          {rep==='TB'&&<TrialBalance accounts={accounts} getBalTo={getBalTo}/>}
+          {rep==='BS'&&<BalanceSheet accounts={accounts} getBalTo={getBalTo}/>}
+          {rep==='PL'&&<ProfitLoss accounts={accounts} getPeriodBal={getPeriodBal} getBalTo={getBalTo}/>}
+          {rep==='CF'&&<CashFlow accounts={accounts} getPeriodBal={getPeriodBal} getPrevBal={getPrevBal}/>}
+          {rep==='DR'&&<DebtorsAging/>}
+          {rep==='CR'&&<CreditorsAging/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RR({label,amount,bold,indent,color,ul,header}){
+  if(header)return(
+    <tr style={{background:'#1a2540'}}>
+      <td colSpan={2} style={{color:'#93c5fd',fontWeight:600,fontSize:12,padding:'7px 10px',letterSpacing:0.3}}>{label}</td>
+    </tr>
+  );
+  return(
+    <tr style={{borderBottom:ul?'1px solid #3d5080':'none'}}>
+      <td style={{paddingLeft:indent?28:8,color:bold?'#c9a227':'#e2e8f0',fontWeight:bold?700:400,fontSize:12,padding:`5px 8px 5px ${indent?28:8}px`}}>{label}</td>
+      <td style={{textAlign:'right',color:color||'#e2e8f0',fontWeight:bold?700:400,fontSize:12,paddingRight:12,fontFamily:'monospace',whiteSpace:'nowrap'}}>
+        {amount!==undefined&&amount!==null?pkr(amount):''}
+      </td>
+    </tr>
+  );
+}
+
+function TrialBalance({accounts,getBalTo}){
+  const data=accounts.map(a=>{
+    const b=getBalTo(a.code);
+    const netDr=a.normalBal==='Debit'?Math.max(b.dr-b.cr,0):0;
+    const netCr=a.normalBal==='Credit'?Math.max(b.cr-b.dr,0):0;
+    return{...a,netDr,netCr,rawDr:b.dr,rawCr:b.cr};
+  }).filter(a=>a.rawDr>0||a.rawCr>0);
+  const groups=[...new Set(data.map(a=>a.group))];
+  const totDr=data.reduce((s,a)=>s+a.netDr,0);
+  const totCr=data.reduce((s,a)=>s+a.netCr,0);
+  return(
+    <table>
+      <thead><tr><th>Account</th><th style={{textAlign:'right'}}>Debit (₨)</th><th style={{textAlign:'right'}}>Credit (₨)</th></tr></thead>
+      <tbody>
+        {groups.map(g=>{
+          const gr=data.filter(a=>a.group===g);
+          const gDr=gr.reduce((s,a)=>s+a.netDr,0);
+          const gCr=gr.reduce((s,a)=>s+a.netCr,0);
+          if(gDr===0&&gCr===0)return null;
+          return[
+            <tr key={g+'h'} style={{background:'#1a2540'}}><td colSpan={3} style={{color:'#c9a227',fontWeight:600,fontSize:12,padding:'7px 10px'}}>{g}</td></tr>,
+            ...gr.map(a=>(
+              <tr key={a.code}>
+                <td style={{paddingLeft:20,fontSize:12}}>{a.code} — {a.name}</td>
+                <td style={{textAlign:'right',color:'#86efac',fontFamily:'monospace',fontSize:12,paddingRight:12}}>{a.netDr>0?pkr(a.netDr):''}</td>
+                <td style={{textAlign:'right',color:'#fca5a5',fontFamily:'monospace',fontSize:12,paddingRight:12}}>{a.netCr>0?pkr(a.netCr):''}</td>
+              </tr>
+            )),
+            <tr key={g+'t'} style={{background:'#162035',borderTop:'1px solid #2d4070'}}>
+              <td style={{paddingLeft:20,fontSize:11,color:'#64748b',fontStyle:'italic'}}>Subtotal — {g}</td>
+              <td style={{textAlign:'right',color:'#86efac',fontWeight:600,fontFamily:'monospace',fontSize:12,paddingRight:12}}>{gDr>0?pkr(gDr):''}</td>
+              <td style={{textAlign:'right',color:'#fca5a5',fontWeight:600,fontFamily:'monospace',fontSize:12,paddingRight:12}}>{gCr>0?pkr(gCr):''}</td>
+            </tr>
+          ];
+        })}
+        <tr style={{background:'#0f1729',borderTop:'2px solid #c9a227'}}>
+          <td style={{color:'#c9a227',fontWeight:700,padding:'10px 8px',fontSize:13}}>GRAND TOTAL</td>
+          <td style={{textAlign:'right',color:'#22c55e',fontWeight:700,fontSize:14,fontFamily:'monospace',paddingRight:12}}>{pkr(totDr)}</td>
+          <td style={{textAlign:'right',color:Math.abs(totDr-totCr)<1?'#22c55e':'#ef4444',fontWeight:700,fontSize:14,fontFamily:'monospace',paddingRight:12}}>{pkr(totCr)}</td>
+        </tr>
+        <tr><td colSpan={3} style={{textAlign:'center',padding:10}}>
+          {Math.abs(totDr-totCr)<1
+            ?<span className="badge" style={{background:'#14532d',color:'#86efac',fontSize:12,padding:'4px 16px'}}>✓ Trial Balance Tallied</span>
+            :<span className="badge" style={{background:'#7f1d1d',color:'#fca5a5',fontSize:12,padding:'4px 16px'}}>Difference: {pkr(Math.abs(totDr-totCr))}</span>}
+        </td></tr>
+      </tbody>
+    </table>
+  );
+}
+
+function BalanceSheet({accounts,getBalTo}){
+  const nb=(code)=>{const b=getBalTo(code);const a=accounts.find(x=>x.code===code);if(!a)return 0;return a.normalBal==='Debit'?b.dr-b.cr:b.cr-b.dr;};
+  const cash=nb('1001')+nb('1002')+nb('1003');
+  const debtors=nb('1010');
+  const stock=nb('1020');
+  const advPre=nb('1030')+nb('1040')+nb('1050');
+  const fa=nb('1201')+nb('1202')+nb('1203')+nb('1204');
+  const accDep=Math.max(getBalTo('1205').cr-getBalTo('1205').dr,0);
+  const netFA=fa-accDep;
+  const currAssets=cash+debtors+stock+advPre;
+  const totalAssets=netFA+currAssets;
+
+  const cr=getBalTo;
+  const creditors=Math.max(cr('2001').cr-cr('2001').dr,0);
+  const accruals=Math.max(cr('2002').cr-cr('2002').dr,0);
+  const staxP=Math.max(cr('2003').cr-cr('2003').dr,0);
+  const itaxP=Math.max(cr('2004').cr-cr('2004').dr,0);
+  const whtP=Math.max(cr('2005').cr-cr('2005').dr,0);
+  const stLoans=Math.max(cr('2006').cr-cr('2006').dr,0);
+  const ltLoan=Math.max(cr('2201').cr-cr('2201').dr,0);
+  const capital=Math.max(cr('3001').cr-cr('3001').dr,0);
+  const retOB=Math.max(cr('3002').cr-cr('3002').dr,0);
+  const drawings=Math.max(cr('3003').dr-cr('3003').cr,0);
+  const revT=accounts.filter(a=>a.type==='Revenue').reduce((s,a)=>{const b=cr(a.code);return s+b.cr-b.dr;},0);
+  const expT=accounts.filter(a=>a.type==='Expense').reduce((s,a)=>{const b=cr(a.code);return s+b.dr-b.cr;},0);
+  const netProfit=revT-expT;
+  const retained=retOB+netProfit-drawings;
+  const totalEquity=capital+retained;
+  const currLiab=creditors+accruals+staxP+itaxP+whtP+stLoans;
+  const totalLiabEq=totalEquity+ltLoan+currLiab;
+
+  return(
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
+      <div>
+        <div style={{color:'#c9a227',fontWeight:700,fontSize:13,padding:'6px 0',borderBottom:'1px solid #2d4070',marginBottom:8}}>ASSETS</div>
+        <table><tbody>
+          <RR label="Non-Current Assets" header/>
+          <RR label="Tangible Fixed Assets (Gross)" amount={fa} indent/>
+          <RR label="Less: Accumulated Depreciation" amount={-accDep} indent color="#fca5a5"/>
+          <RR label="Net Fixed Assets" amount={netFA} bold ul/>
+          <RR label="Current Assets" header/>
+          <RR label="Stock in Trade" amount={stock} indent/>
+          <RR label="Trade Debtors" amount={debtors} indent/>
+          <RR label="Advances, Deposits & Prepayments" amount={advPre} indent/>
+          <RR label="Cash & Bank Balances" amount={cash} indent/>
+          <RR label="Total Current Assets" amount={currAssets} bold ul/>
+          <RR label="TOTAL ASSETS" amount={totalAssets} bold color="#c9a227"/>
+        </tbody></table>
+      </div>
+      <div>
+        <div style={{color:'#c9a227',fontWeight:700,fontSize:13,padding:'6px 0',borderBottom:'1px solid #2d4070',marginBottom:8}}>EQUITY & LIABILITIES</div>
+        <table><tbody>
+          <RR label="Shareholders' Equity" header/>
+          <RR label="Paid-up Capital / Capital" amount={capital} indent/>
+          <RR label="Net Profit for Period" amount={netProfit} indent color={netProfit>=0?'#86efac':'#fca5a5'}/>
+          <RR label="Less: Drawings" amount={-drawings} indent color="#fca5a5"/>
+          <RR label="Retained Earnings" amount={retained} indent/>
+          <RR label="Total Shareholders' Equity" amount={totalEquity} bold ul/>
+          <RR label="Non-Current Liabilities" header/>
+          <RR label="Long-term Financing" amount={ltLoan} indent/>
+          <RR label="Current Liabilities" header/>
+          <RR label="Trade & Other Creditors" amount={creditors} indent/>
+          <RR label="Accrued Liabilities" amount={accruals} indent/>
+          <RR label="Sales Tax Payable (GST)" amount={staxP} indent/>
+          <RR label="Income Tax Payable" amount={itaxP} indent/>
+          <RR label="WHT Payable" amount={whtP} indent/>
+          <RR label="Short-term Borrowings" amount={stLoans} indent/>
+          <RR label="Total Current Liabilities" amount={currLiab} bold ul/>
+          <RR label="TOTAL EQUITY & LIABILITIES" amount={totalLiabEq} bold color="#c9a227"/>
+          <tr><td colSpan={2} style={{textAlign:'center',padding:8}}>
+            {Math.abs(totalAssets-totalLiabEq)<1
+              ?<span className="badge" style={{background:'#14532d',color:'#86efac'}}>✓ Balance Sheet Tallied</span>
+              :<span className="badge" style={{background:'#7f1d1d',color:'#fca5a5'}}>Diff: {pkr(Math.abs(totalAssets-totalLiabEq))}</span>}
+          </td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  );
+}
+
+function ProfitLoss({accounts,getPeriodBal,getBalTo}){
+  const p=getPeriodBal;
+  const salesTax=p('4001');const salesEx=p('4002');const otherInc=p('4003');
+  const grossRev=(salesTax.cr-salesTax.dr)+(salesEx.cr-salesEx.dr);
+  const gstColl=Math.max(p('2003').cr-p('2003').dr,0);
+  const openStk=p('5001');const purchases=p('5002');const closeStk=p('5003');
+  const cogs=Math.max(openStk.dr-openStk.cr,0)+Math.max(purchases.dr-purchases.cr,0)-Math.max(closeStk.cr-closeStk.dr,0);
+  const grossProfit=grossRev-cogs;
+  const sal=p('6001');const rent=p('6002');const util=p('6003');const trans=p('6004');
+  const admin=p('6005');const sell=p('6006');const dep=p('6007');
+  const salAmt=sal.dr-sal.cr;const rentAmt=rent.dr-rent.cr;const utilAmt=util.dr-util.cr;
+  const transAmt=trans.dr-trans.cr;const adminAmt=admin.dr-admin.cr;const sellAmt=sell.dr-sell.cr;const depAmt=dep.dr-dep.cr;
+  const totalOpex=salAmt+rentAmt+utilAmt+transAmt+adminAmt+sellAmt+depAmt;
+  const ebit=grossProfit-totalOpex;
+  const oInc=otherInc.cr-otherInc.dr;
+  const bankC=p('7001');const markup=p('7002');
+  const finChg=Math.max(bankC.dr-bankC.cr,0)+Math.max(markup.dr-markup.cr,0);
+  const pbt=ebit+oInc-finChg;
+  const itax=p('8001');const taxAmt=Math.max(itax.dr-itax.cr,0);
+  const pat=pbt-taxAmt;
+  const retOB=Math.max(getBalTo('3002').cr-getBalTo('3002').dr,0)-pat;
+  const drawPer=Math.max(p('3003').dr-p('3003').cr,0);
+
+  return(
+    <table style={{width:'60%',margin:'0 auto',minWidth:400}}><tbody>
+      <RR label="Net Revenue / Turnover" amount={grossRev} bold/>
+      <RR label="Less: Cost of Goods Sold" indent/>
+      <RR label="   Opening Stock" amount={openStk.dr-openStk.cr} indent/>
+      <RR label="   Add: Purchases" amount={purchases.dr-purchases.cr} indent/>
+      <RR label="   Less: Closing Stock" amount={-(closeStk.cr-closeStk.dr)} indent color="#fca5a5"/>
+      <RR label="Total Cost of Goods Sold" amount={cogs} bold ul color="#fca5a5"/>
+      <RR label="GROSS PROFIT" amount={grossProfit} bold color={grossProfit>=0?'#22c55e':'#ef4444'}/>
+      <tr style={{height:6}}/>
+      <RR label="Operating Expenses" header/>
+      <RR label="Salaries & Wages" amount={salAmt} indent/>
+      <RR label="Rent Expense" amount={rentAmt} indent/>
+      <RR label="Utility Bills" amount={utilAmt} indent/>
+      <RR label="Transport" amount={transAmt} indent/>
+      <RR label="Administrative Expenses" amount={adminAmt} indent/>
+      <RR label="Selling & Distribution" amount={sellAmt} indent/>
+      <RR label="Depreciation" amount={depAmt} indent/>
+      <RR label="Total Operating Expenses" amount={totalOpex} bold ul color="#fca5a5"/>
+      <RR label="OPERATING PROFIT (EBIT)" amount={ebit} bold color={ebit>=0?'#86efac':'#ef4444'}/>
+      <RR label="Add: Other Income" amount={oInc} indent color="#86efac"/>
+      <RR label="Less: Financial Charges / Markup" amount={-finChg} indent color="#fca5a5"/>
+      <RR label="PROFIT BEFORE TAXATION" amount={pbt} bold ul color={pbt>=0?'#86efac':'#ef4444'}/>
+      <RR label="Less: Income Tax (Current)" amount={-taxAmt} indent color="#fca5a5"/>
+      <RR label="PROFIT AFTER TAXATION" amount={pat} bold ul color={pat>=0?'#22c55e':'#ef4444'}/>
+      <tr style={{height:8}}/>
+      <RR label="Add: Retained Earnings B/F" amount={retOB} indent/>
+      <RR label="Less: Drawings for Period" amount={-drawPer} indent color="#fca5a5"/>
+      <RR label="RETAINED EARNINGS C/F" amount={retOB+pat-drawPer} bold color="#c9a227"/>
+    </tbody></table>
+  );
+}
+
+function CashFlow({accounts,getPeriodBal,getPrevBal}){
+  const p=getPeriodBal;const pp=getPrevBal;
+  const dep=p('6007');const depAmt=dep.dr-dep.cr;
+  const salesT=p('4001');const salesEx=p('4002');const otherInc=p('4003');
+  const grossRev=(salesT.cr-salesT.dr)+(salesEx.cr-salesEx.dr)+(otherInc.cr-otherInc.dr);
+  const pur=p('5002');const sal=p('6001');const rent=p('6002');const util=p('6003');const trans=p('6004');const admin=p('6005');const sell=p('6006');
+  const opExpPaid=Math.max(pur.dr-pur.cr,0)+Math.max(sal.dr-sal.cr,0)+Math.max(rent.dr-rent.cr,0)+Math.max(util.dr-util.cr,0)+Math.max(trans.dr-trans.cr,0)+Math.max(admin.dr-admin.cr,0)+Math.max(sell.dr-sell.cr,0);
+  const taxP=p('8001');const taxPaid=Math.max(taxP.dr-taxP.cr,0);
+  const netOp=grossRev-opExpPaid+depAmt-taxPaid;
+
+  const fa1=p('1201');const fa2=p('1202');
+  const faAdds=Math.max(fa1.dr-fa1.cr,0)+Math.max(fa2.dr-fa2.cr,0);
+  const faDisp=Math.max(fa1.cr-fa1.dr,0)+Math.max(fa2.cr-fa2.dr,0);
+  const netInv=faDisp-faAdds;
+
+  const ltL=p('2201');const ltLoanPrc=Math.max(ltL.cr-ltL.dr,0);const ltLoanRep=Math.max(ltL.dr-ltL.cr,0);
+  const cap=p('3001');const capIntro=Math.max(cap.cr-cap.dr,0);
+  const draw=p('3003');const drawings=Math.max(draw.dr-draw.cr,0);
+  const netFin=ltLoanPrc-ltLoanRep+capIntro-drawings;
+  const netChg=netOp+netInv+netFin;
+
+  const openCash=['1001','1002','1003'].reduce((s,c)=>{const b=pp(c);return s+(b.dr-b.cr);},0);
+  const closeCash=openCash+netChg;
+
+  return(
+    <table style={{width:'65%',margin:'0 auto',minWidth:400}}><tbody>
+      <RR label="A. Cash Flows from Operating Activities" header/>
+      <RR label="Cash receipts from customers & revenue" amount={grossRev} indent color="#86efac"/>
+      <RR label="Cash paid to suppliers & employees" amount={-opExpPaid} indent color="#fca5a5"/>
+      <RR label="Add back: Depreciation (non-cash)" amount={depAmt} indent color="#86efac"/>
+      <RR label="Income tax paid" amount={-taxPaid} indent color="#fca5a5"/>
+      <RR label="Net Cash from Operating Activities" amount={netOp} bold ul color={netOp>=0?'#86efac':'#fca5a5'}/>
+      <tr style={{height:6}}/>
+      <RR label="B. Cash Flows from Investing Activities" header/>
+      <RR label="Purchase of fixed assets" amount={-faAdds} indent color="#fca5a5"/>
+      <RR label="Proceeds from disposal of assets" amount={faDisp} indent color="#86efac"/>
+      <RR label="Net Cash from Investing Activities" amount={netInv} bold ul color={netInv>=0?'#86efac':'#fca5a5'}/>
+      <tr style={{height:6}}/>
+      <RR label="C. Cash Flows from Financing Activities" header/>
+      <RR label="Proceeds from long-term financing" amount={ltLoanPrc} indent color="#86efac"/>
+      <RR label="Repayment of long-term financing" amount={-ltLoanRep} indent color="#fca5a5"/>
+      <RR label="Capital introduced by owner" amount={capIntro} indent color="#86efac"/>
+      <RR label="Drawings by owner" amount={-drawings} indent color="#fca5a5"/>
+      <RR label="Net Cash from Financing Activities" amount={netFin} bold ul color={netFin>=0?'#86efac':'#fca5a5'}/>
+      <tr style={{height:10}}/>
+      <RR label="Net Increase / (Decrease) in Cash & Bank" amount={netChg} bold color={netChg>=0?'#86efac':'#fca5a5'}/>
+      <RR label="Opening Cash & Bank Balance" amount={openCash} indent/>
+      <RR label="CLOSING CASH & BANK BALANCE" amount={closeCash} bold color="#c9a227"/>
+    </tbody></table>
+  );
+}
+
+function AgeBuckets({days,amt,isDebtor}){
+  const c0=days<=30?amt:0;const c31=days>30&&days<=60?amt:0;const c61=days>60&&days<=90?amt:0;
+  const c91=days>90&&days<=120?amt:0;const c120=days>120?amt:0;
+  const ageColor=days<=30?'#22c55e':days<=60?'#eab308':days<=90?'#f97316':'#ef4444';
+  return{c0,c31,c61,c91,c120,ageColor};
+}
+
+function DebtorsAging(){
+  const tots=SAMPLE_DEBTORS.reduce((s,p)=>{const{c0,c31,c61,c91,c120}=AgeBuckets(p);s.total+=p.amount;s.c0+=c0;s.c31+=c31;s.c61+=c61;s.c91+=c91;s.c120+=c120;return s;},{total:0,c0:0,c31:0,c61:0,c91:0,c120:0});
+  return(
+    <div>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+        {[{l:'Current (0-30d)',c:'#22c55e',v:tots.c0},{l:'31-60 days',c:'#eab308',v:tots.c31},{l:'61-90 days',c:'#f97316',v:tots.c61},{l:'Over 90 days',c:'#ef4444',v:tots.c91+tots.c120}].map(x=>(
+          <div key={x.l} style={{background:'#1a2540',borderRadius:8,padding:'10px 16px',flex:1,minWidth:130,borderLeft:`3px solid ${x.c}`}}>
+            <div style={{color:'#64748b',fontSize:10}}>{x.l}</div>
+            <div style={{color:x.c,fontWeight:700,fontSize:14}}>{pkr(x.v)}</div>
+          </div>
+        ))}
+      </div>
+      <table>
+        <thead><tr><th>Party Name</th><th>NTN/CNIC</th><th style={{textAlign:'right'}}>Total Outst.</th><th style={{textAlign:'right'}}>0-30d</th><th style={{textAlign:'right'}}>31-60d</th><th style={{textAlign:'right'}}>61-90d</th><th style={{textAlign:'right'}}>91-120d</th><th style={{textAlign:'right'}}>&gt;120d</th><th style={{textAlign:'right'}}>Age</th></tr></thead>
+        <tbody>
+          {[...SAMPLE_DEBTORS].sort((a,b)=>b.outstandingDays-a.outstandingDays).map(p=>{
+            const{c0,c31,c61,c91,c120,ageColor}=AgeBuckets({days:p.outstandingDays,amt:p.amount});
+            return(
+              <tr key={p.id}>
+                <td style={{fontWeight:500}}>{p.name}</td>
+                <td style={{color:'#64748b',fontSize:11}}>{p.ntn}</td>
+                <td style={{textAlign:'right',color:'#c9a227',fontWeight:600,fontFamily:'monospace'}}>{pkr(p.amount)}</td>
+                <td style={{textAlign:'right',color:'#22c55e',fontFamily:'monospace'}}>{c0>0?pkr(c0):''}</td>
+                <td style={{textAlign:'right',color:'#eab308',fontFamily:'monospace'}}>{c31>0?pkr(c31):''}</td>
+                <td style={{textAlign:'right',color:'#f97316',fontFamily:'monospace'}}>{c61>0?pkr(c61):''}</td>
+                <td style={{textAlign:'right',color:'#ef4444',fontFamily:'monospace'}}>{c91>0?pkr(c91):''}</td>
+                <td style={{textAlign:'right',color:'#dc2626',fontFamily:'monospace'}}>{c120>0?pkr(c120):''}</td>
+                <td style={{textAlign:'right'}}><span style={{color:ageColor,fontWeight:600}}>{p.outstandingDays}d</span></td>
+              </tr>
+            );
+          })}
+          <tr style={{background:'#1a2540',borderTop:'2px solid #2d4070',fontWeight:700}}>
+            <td colSpan={2} style={{color:'#c9a227'}}>TOTAL</td>
+            <td style={{textAlign:'right',color:'#c9a227',fontFamily:'monospace'}}>{pkr(tots.total)}</td>
+            <td style={{textAlign:'right',color:'#22c55e',fontFamily:'monospace'}}>{pkr(tots.c0)}</td>
+            <td style={{textAlign:'right',color:'#eab308',fontFamily:'monospace'}}>{pkr(tots.c31)}</td>
+            <td style={{textAlign:'right',color:'#f97316',fontFamily:'monospace'}}>{pkr(tots.c61)}</td>
+            <td style={{textAlign:'right',color:'#ef4444',fontFamily:'monospace'}}>{pkr(tots.c91)}</td>
+            <td style={{textAlign:'right',color:'#dc2626',fontFamily:'monospace'}}>{pkr(tots.c120)}</td>
+            <td/>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CreditorsAging(){
+  const tots=SAMPLE_CREDITORS.reduce((s,p)=>{const{c0,c31,c61,c91,c120}=AgeBuckets({days:p.outstandingDays,amt:p.amount});s.total+=p.amount;s.c0+=c0;s.c31+=c31;s.c61+=c61;s.c91+=c91;s.c120+=c120;return s;},{total:0,c0:0,c31:0,c61:0,c91:0,c120:0});
+  const whtPend=SAMPLE_CREDITORS.filter(p=>p.whtStatus==='Pending').reduce((s,p)=>s+p.amount,0);
+  return(
+    <div>
+      {whtPend>0&&(
+        <div style={{background:'rgba(127,29,29,0.4)',border:'1px solid #ef4444',borderRadius:8,padding:'10px 16px',marginBottom:12,color:'#fca5a5',fontSize:12}}>
+          ⚠️ FBR WHT Compliance Alert: {pkr(whtPend)} in creditor payments have Withholding Tax pending — submit to FBR before deadline.
+        </div>
+      )}
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+        {[{l:'Current (0-30d)',c:'#22c55e',v:tots.c0},{l:'31-60 days',c:'#eab308',v:tots.c31},{l:'61-90 days',c:'#f97316',v:tots.c61},{l:'Over 90 days',c:'#ef4444',v:tots.c91+tots.c120}].map(x=>(
+          <div key={x.l} style={{background:'#1a2540',borderRadius:8,padding:'10px 16px',flex:1,minWidth:130,borderLeft:`3px solid ${x.c}`}}>
+            <div style={{color:'#64748b',fontSize:10}}>{x.l}</div>
+            <div style={{color:x.c,fontWeight:700,fontSize:14}}>{pkr(x.v)}</div>
+          </div>
+        ))}
+      </div>
+      <table>
+        <thead><tr><th>Party Name</th><th>NTN/CNIC</th><th style={{textAlign:'right'}}>Total Outst.</th><th style={{textAlign:'right'}}>0-30d</th><th style={{textAlign:'right'}}>31-60d</th><th style={{textAlign:'right'}}>61-90d</th><th style={{textAlign:'right'}}>91-120d</th><th style={{textAlign:'right'}}>&gt;120d</th><th>WHT Status</th><th style={{textAlign:'right'}}>Age</th></tr></thead>
+        <tbody>
+          {[...SAMPLE_CREDITORS].sort((a,b)=>b.outstandingDays-a.outstandingDays).map(p=>{
+            const{c0,c31,c61,c91,c120,ageColor}=AgeBuckets({days:p.outstandingDays,amt:p.amount});
+            return(
+              <tr key={p.id}>
+                <td style={{fontWeight:500}}>{p.name}</td>
+                <td style={{color:'#64748b',fontSize:11}}>{p.ntn}</td>
+                <td style={{textAlign:'right',color:'#c9a227',fontWeight:600,fontFamily:'monospace'}}>{pkr(p.amount)}</td>
+                <td style={{textAlign:'right',color:'#22c55e',fontFamily:'monospace'}}>{c0>0?pkr(c0):''}</td>
+                <td style={{textAlign:'right',color:'#eab308',fontFamily:'monospace'}}>{c31>0?pkr(c31):''}</td>
+                <td style={{textAlign:'right',color:'#f97316',fontFamily:'monospace'}}>{c61>0?pkr(c61):''}</td>
+                <td style={{textAlign:'right',color:'#ef4444',fontFamily:'monospace'}}>{c91>0?pkr(c91):''}</td>
+                <td style={{textAlign:'right',color:'#dc2626',fontFamily:'monospace'}}>{c120>0?pkr(c120):''}</td>
+                <td>
+                  <span className="badge" style={{background:p.whtStatus==='Deducted'?'#14532d':'#7f1d1d',color:p.whtStatus==='Deducted'?'#86efac':'#fca5a5'}}>
+                    {p.whtStatus}
+                  </span>
+                </td>
+                <td style={{textAlign:'right'}}><span style={{color:ageColor,fontWeight:600}}>{p.outstandingDays}d</span></td>
+              </tr>
+            );
+          })}
+          <tr style={{background:'#1a2540',borderTop:'2px solid #2d4070',fontWeight:700}}>
+            <td colSpan={2} style={{color:'#c9a227'}}>TOTAL</td>
+            <td style={{textAlign:'right',color:'#c9a227',fontFamily:'monospace'}}>{pkr(tots.total)}</td>
+            <td style={{textAlign:'right',color:'#22c55e',fontFamily:'monospace'}}>{pkr(tots.c0)}</td>
+            <td style={{textAlign:'right',color:'#eab308',fontFamily:'monospace'}}>{pkr(tots.c31)}</td>
+            <td style={{textAlign:'right',color:'#f97316',fontFamily:'monospace'}}>{pkr(tots.c61)}</td>
+            <td style={{textAlign:'right',color:'#ef4444',fontFamily:'monospace'}}>{pkr(tots.c91)}</td>
+            <td style={{textAlign:'right',color:'#dc2626',fontFamily:'monospace'}}>{pkr(tots.c120)}</td>
+            <td/><td/>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ─── SETTINGS ─── */
+function Settings({company,setCompany,showToast}){
+  const[f,setF]=useState({...company});
+  const flds=[['name','Company Name'],['ntn','NTN (National Tax Number)'],['strn','STRN (Sales Tax Registration No.)'],['address','Registered Address'],['contact','Contact Number'],['email','Email Address']];
+  return(
+    <div style={{padding:24,maxWidth:750}}>
+      <h2 style={{color:'#c9a227',fontSize:17,fontWeight:700,marginBottom:20}}>Company Settings</h2>
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,padding:24,marginBottom:16}}>
+        <h3 style={{color:'#93c5fd',fontSize:13,marginBottom:16,fontWeight:600}}>Company Information</h3>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          {flds.map(([k,l])=>(
+            <div key={k} style={k==='address'?{gridColumn:'1/-1'}:{}}>
+              <label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:4}}>{l}</label>
+              <input value={f[k]||''} onChange={e=>setF(p=>({...p,[k]:e.target.value}))}/>
+            </div>
+          ))}
+          <div>
+            <label style={{color:'#94a3b8',fontSize:11,display:'block',marginBottom:4}}>Fiscal Year Start</label>
+            <select value={f.fiscalStart} onChange={e=>setF(p=>({...p,fiscalStart:e.target.value}))}>
+              <option value="07">July (Pakistan Standard — Jul to Jun)</option>
+              <option value="01">January (Calendar Year — Jan to Dec)</option>
+            </select>
+          </div>
+        </div>
+        <button onClick={()=>{setCompany(f);showToast('Company settings saved');}} style={{background:'#c9a227',color:'#0a1628',fontWeight:700,padding:'10px 24px',marginTop:20}}>
+          Save Settings
+        </button>
+      </div>
+      <div style={{background:'#132040',border:'1px solid #1e3060',borderRadius:10,padding:20}}>
+        <h3 style={{color:'#93c5fd',fontSize:13,marginBottom:12,fontWeight:600}}>Pakistan FBR Compliance Reference</h3>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          {[
+            ['GST / Sales Tax','Standard rate: 18% | Zero-rated: 0% | Exempt categories apply'],
+            ['WHT on Services','General: 8-10% | Specified: varies by SRO'],
+            ['WHT on Supplies','Registered: 2-4.5% | Unregistered: higher rates'],
+            ['Income Tax','Slab-based for individuals | 29% corporate'],
+            ['Tax Year','1 July to 30 June | FBR fiscal year'],
+            ['Accounting Standards','ICAP / IAS-IFRS adapted | Companies Act 2017'],
+          ].map(([k,v])=>(
+            <div key={k} style={{background:'#0f1729',borderRadius:6,padding:'10px 14px'}}>
+              <div style={{color:'#c9a227',fontSize:11,fontWeight:600,marginBottom:3}}>{k}</div>
+              <div style={{color:'#64748b',fontSize:11,lineHeight:1.5}}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
