@@ -9,17 +9,23 @@ type SidebarProps = {
   companyName?: string;
   ntn?: string | null;
   strn?: string | null;
+  onNavigate?: () => void;
+  className?: string;
 };
 
 export function Sidebar({
   companyName = "GarmentLoop ERP",
   ntn,
   strn,
+  onNavigate,
+  className = "",
 }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-[220px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)]">
+    <aside
+      className={`flex h-full w-[220px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] lg:w-[240px] ${className}`}
+    >
       <div className="border-b border-[var(--border)] px-3.5 py-4">
         <div className="text-[13px] font-semibold leading-snug text-[var(--accent)]">
           {companyName}
@@ -45,6 +51,7 @@ export function Sidebar({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onNavigate}
                   className={`flex w-full items-center border-l-[3px] px-3.5 py-2.5 text-left text-xs transition-colors ${
                     active
                       ? "border-[var(--accent)] bg-[var(--nav-active)] font-semibold text-[var(--accent)]"

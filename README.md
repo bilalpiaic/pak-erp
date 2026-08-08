@@ -33,6 +33,23 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) — redirects to `/dashboard`.
 
+### Responsive layout
+
+- **Small (&lt; md):** top bar + slide-out navigation drawer
+- **md+:** persistent sidebar
+- **lg:** wider sidebar and 3-column dashboard / report grids
+
+### Deploy (Vercel)
+
+Project: [bilalpiaics-projects/pak-erp](https://vercel.com/bilalpiaics-projects/pak-erp)
+
+```bash
+npx vercel link --yes --project pak-erp --scope bilalpiaics-projects
+npx vercel --prod
+```
+
+Set `DATABASE_URL` (and later `AUTH_SECRET`) in the Vercel project Environment Variables before enabling database features.
+
 ## Scripts
 
 | Command | Purpose |

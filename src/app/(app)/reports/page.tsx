@@ -9,7 +9,7 @@ export default function ReportsPage() {
       title="Reports"
       description="Financial statements and aging reports derived from posted voucher lines."
     >
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {REPORT_LINKS.map((report) => (
           <li key={report.href}>
             <Link
