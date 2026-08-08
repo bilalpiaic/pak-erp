@@ -81,3 +81,18 @@ a {
     font-size: 12px;
   }
 }
+
+.field-input {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  background: #1e2a45;
+  color: var(--foreground);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.8125rem;
+  border-radius: 0;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}

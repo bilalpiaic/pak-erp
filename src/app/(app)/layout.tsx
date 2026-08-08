@@ -1,8 +1,17 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { getPrimaryCompany } from "@/lib/company/service";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export const dynamic = "force-dynamic";
+
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const company = await getPrimaryCompany();
+
   return (
-    <AppShell companyName="Gill Embroidery" ntn="1234567-8" strn="12-34-5678-001-56">
+    <AppShell
+      companyName={company?.name ?? "GarmentLoop ERP"}
+      ntn={company?.ntn}
+      strn={company?.strn}
+    >
       {children}
     </AppShell>
   );

@@ -9,14 +9,20 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Prisma + PostgreSQL
 - Deploy target: Vercel
 
-## Phase 1 — Foundation (current)
+## Current progress
 
-- Next.js project with TypeScript and Tailwind
-- Prisma schema for companies, accounts, fiscal years, vouchers, voucher lines
-- Environment configuration (`.env.example`)
-- App shell with sidebar navigation
-- Placeholder pages for Dashboard, COA, Vouchers, Journal, Ledger, Reports, Settings
-- Shared money formatter (`₨1,250,000.00` — no abbreviations)
+### Phase 1 — Foundation
+
+- Next.js + TypeScript + Tailwind + Prisma
+- App shell (responsive sm / md / lg)
+- Shared money formatter (`₨1,250,000.00`)
+
+### Phase 2 — Database
+
+- Prisma migration for companies, fiscal years, accounts, vouchers, voucher lines, audit logs
+- Seed data: Gill Embroidery, FY 2024-25, 40 accounts, 12 posted vouchers
+- Company Settings UI reads/writes PostgreSQL
+- `/api/company` and `/api/health`
 
 The legacy single-file prototype lives in `legacy/index.html`.
 
@@ -27,11 +33,18 @@ cp .env.example .env
 # set DATABASE_URL to your PostgreSQL connection string
 
 npm install
-npx prisma generate
+npm run db:setup   # migrate deploy + seed
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) — redirects to `/dashboard`.
+
+Local Cloud Agent bootstrap (Postgres + migrate + seed):
+
+```bash
+bash .cursor/install.sh
+bash .cursor/start.sh
+```
 
 ### Responsive layout
 
@@ -48,7 +61,7 @@ npx vercel link --yes --project pak-erp --scope bilalpiaics-projects
 npx vercel --prod
 ```
 
-Set `DATABASE_URL` (and later `AUTH_SECRET`) in the Vercel project Environment Variables before enabling database features.
+Set `DATABASE_URL` (and later `AUTH_SECRET`) in the Vercel project Environment Variables before enabling database features. Run `prisma migrate deploy` as part of the production release process (or via the build command once a hosted Postgres is connected).
 
 ## Scripts
 
@@ -58,8 +71,10 @@ Set `DATABASE_URL` (and later `AUTH_SECRET`) in the Vercel project Environment V
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
 | `npm run lint` | ESLint |
+| `npm run db:setup` | `migrate deploy` + seed |
 | `npm run prisma:generate` | Generate Prisma Client |
-| `npm run prisma:migrate` | Run migrations (Phase 2+) |
+| `npm run prisma:migrate` | Create/apply migrations (dev) |
+| `npm run prisma:seed` | Re-seed Gill Embroidery sample data |
 
 ## Environment variables
 

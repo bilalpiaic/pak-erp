@@ -39,16 +39,18 @@ if ! psql -h /tmp -U "$DB_USER" -d postgres -tAc \
   createdb -h /tmp -U "$DB_USER" "$DB_NAME"
 fi
 
-# Generate a local .env (git-ignored) so DATABASE_URL is available to Next.js/Prisma.
-if [ ! -f .env ]; then
+# Generate / refresh local .env so DATABASE_URL matches this user-owned cluster.
+EXPECTED_DATABASE_URL="postgresql://$DB_USER@localhost:5432/$DB_NAME?schema=public"
+if [ ! -f .env ] || ! grep -q "DATABASE_URL=\"$EXPECTED_DATABASE_URL\"" .env; then
   cat > .env <<EOF
-DATABASE_URL="postgresql://$DB_USER@localhost:5432/$DB_NAME?schema=public"
+DATABASE_URL="$EXPECTED_DATABASE_URL"
 AUTH_SECRET="dev-secret-not-for-production-change-me"
 NEXT_PUBLIC_APP_NAME="GarmentLoop ERP"
 NEXT_PUBLIC_CURRENCY="PKR"
 EOF
 fi
 
-# Install dependencies (runs `prisma generate` via postinstall) and sync the schema.
+# Install dependencies (runs `prisma generate` via postinstall), migrate, and seed.
 npm ci
-npx prisma db push
+npx prisma migrate deploy
+npx prisma db seed

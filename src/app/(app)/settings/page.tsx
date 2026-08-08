@@ -1,15 +1,20 @@
+import { CompanySettingsForm } from "@/components/settings/CompanySettingsForm";
 import { PageShell } from "@/components/ui/PageShell";
-import { PhasePlaceholder } from "@/components/ui/PhasePlaceholder";
+import { getPrimaryCompanyWithFiscalYear } from "@/lib/company/service";
 
-export default function SettingsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  const data = await getPrimaryCompanyWithFiscalYear();
+
   return (
     <PageShell
       title="Company Settings"
-      description="Company name, address, NTN, STRN, phone, email, currency, and fiscal year."
+      description="Company name, address, NTN, STRN, phone, email, currency, and fiscal year — persisted in PostgreSQL."
     >
-      <PhasePlaceholder
-        phase="Phase 2 — Database"
-        summary="Company master data will be stored in PostgreSQL and editable from this screen."
+      <CompanySettingsForm
+        company={data?.company ?? null}
+        fiscalYear={data?.fiscalYear ?? null}
       />
     </PageShell>
   );
