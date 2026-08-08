@@ -24,6 +24,14 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Company Settings UI reads/writes PostgreSQL
 - `/api/company` and `/api/health`
 
+### Phase 3 — Chart of Accounts
+
+- COA list grouped by account group (hierarchy)
+- Create / edit accounts
+- Activate / deactivate
+- Search + type/status filters
+- `/api/accounts` and `/api/accounts/:id`
+
 The legacy single-file prototype lives in `legacy/index.html`.
 
 ## Getting started

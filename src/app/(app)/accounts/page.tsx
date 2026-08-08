@@ -1,17 +1,20 @@
+import { ChartOfAccounts } from "@/components/accounts/ChartOfAccounts";
 import { PageShell } from "@/components/ui/PageShell";
-import { PhasePlaceholder } from "@/components/ui/PhasePlaceholder";
-import { getPrisma } from "@/lib/db/prisma";
+import { listAccounts } from "@/lib/accounts/service";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountsPage() {
-  let accountCount: number | null = null;
-  let dbError: string | null = null;
+  let accounts: Awaited<ReturnType<typeof listAccounts>>["accounts"] = [];
+  let groups: Awaited<ReturnType<typeof listAccounts>>["groups"] = [];
+  let loadError: string | null = null;
 
   try {
-    accountCount = await getPrisma().account.count();
+    const data = await listAccounts();
+    accounts = data.accounts;
+    groups = data.groups;
   } catch (error) {
-    dbError =
+    loadError =
       error instanceof Error
         ? error.message
         : "Database is unavailable. Check DATABASE_URL and run migrations.";
@@ -20,22 +23,12 @@ export default async function AccountsPage() {
   return (
     <PageShell
       title="Chart of Accounts"
-      description="Maintain account codes, types, groups, and active status."
+      description="Maintain account codes, types, groups, and active status. Grouped hierarchy is derived from account groups."
     >
-      {dbError ? (
-        <div className="mb-4 border border-[var(--warning-bg)] bg-[var(--panel)] px-4 py-3 text-sm text-[var(--warning)]">
-          {dbError}
-        </div>
-      ) : (
-        <div className="mb-4 border border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-sm text-[var(--muted)]">
-          PostgreSQL currently holds{" "}
-          <span className="font-medium text-[var(--foreground)]">{accountCount}</span> accounts
-          (seeded from the legacy prototype). Full CRUD arrives in Phase 3.
-        </div>
-      )}
-      <PhasePlaceholder
-        phase="Phase 3 — Chart of Accounts"
-        summary="List, create, edit, activate/deactivate, and search accounts stored in PostgreSQL."
+      <ChartOfAccounts
+        initialAccounts={accounts}
+        initialGroups={groups}
+        loadError={loadError}
       />
     </PageShell>
   );
