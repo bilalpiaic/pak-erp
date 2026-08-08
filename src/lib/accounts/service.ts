@@ -89,13 +89,26 @@ export async function listAccounts(
   if (query.active === "active") where.isActive = true;
   if (query.active === "inactive") where.isActive = false;
 
+  // Search code/name with word-aware matching so "Rent" does not match
+  // groups like "Current Assets" (substring "rent" inside "Current").
+  let searchIds: bigint[] | null = null;
   if (query.search?.trim()) {
     const search = query.search.trim();
-    where.OR = [
-      { code: { contains: search, mode: "insensitive" } },
-      { name: { contains: search, mode: "insensitive" } },
-      { accountGroup: { contains: search, mode: "insensitive" } },
-    ];
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const wordPattern = `(^|[^A-Za-z0-9])${escaped}([^A-Za-z0-9]|$)`;
+
+    const matched = await prisma.$queryRaw<Array<{ id: bigint }>>`
+      SELECT id
+      FROM accounts
+      WHERE company_id = ${companyId}
+        AND (
+          code ILIKE ${`%${search}%`}
+          OR name ~* ${wordPattern}
+          OR account_group ~* ${wordPattern}
+        )
+    `;
+    searchIds = matched.map((row) => row.id);
+    where.id = { in: searchIds.length ? searchIds : [-1n] };
   }
 
   const rows = await prisma.account.findMany({
