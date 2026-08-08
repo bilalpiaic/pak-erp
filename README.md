@@ -69,7 +69,26 @@ npx vercel link --yes --project pak-erp --scope bilalpiaics-projects
 npx vercel --prod
 ```
 
-Set `DATABASE_URL` (and later `AUTH_SECRET`) in the Vercel project Environment Variables before enabling database features. Run `prisma migrate deploy` as part of the production release process (or via the build command once a hosted Postgres is connected).
+### Database (Neon)
+
+Production/dev cloud database is intended to run on [Neon](https://neon.tech).
+
+1. Create a Neon project and copy the **pooled** connection string.
+2. Put it in `.env` as `DATABASE_URL` (never commit `.env`).
+3. Apply schema + seed:
+
+```bash
+npm run db:setup
+```
+
+Vercel build runs `prisma migrate deploy` automatically when `DATABASE_URL` is set in the project Environment Variables (Production + Preview).
+
+Set these in [Vercel → pak-erp → Settings → Environment Variables](https://vercel.com/bilalpiaics-projects/pak-erp/settings/environment-variables):
+
+| Name | Notes |
+|---|---|
+| `DATABASE_URL` | Neon pooled URL with `sslmode=require` |
+| `AUTH_SECRET` | Random secret for future auth |
 
 ## Scripts
 
