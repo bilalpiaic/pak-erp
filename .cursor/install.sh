@@ -2,6 +2,10 @@
 # Idempotent repository bootstrap for the GarmentLoop ERP Cloud Agent environment.
 # Provisions a user-owned PostgreSQL cluster, installs Node dependencies, generates
 # the Prisma client, and syncs the schema. Safe to run repeatedly.
+#
+# The environment base image must provide the PostgreSQL server package
+# (postgresql / postgresql-contrib) and Node 22; this script initializes and
+# manages a per-user cluster on top of it.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
