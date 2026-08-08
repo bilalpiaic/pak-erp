@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { AccountFormModal } from "@/components/accounts/AccountFormModal";
 import {
@@ -38,8 +38,7 @@ export function ChartOfAccounts({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();
-  const [refreshToken, setRefreshToken] = useState(0);
-  const [hasMounted, setHasMounted] = useState(false);
+  const skipFirstFetch = useRef(true);
 
   const visibleCount = useMemo(
     () => groups.reduce((sum, section) => sum + section.accounts.length, 0),
@@ -47,12 +46,12 @@ export function ChartOfAccounts({
   );
 
   useEffect(() => {
-    setHasMounted(true);
-  }, []);
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
 
-  useEffect(() => {
-    if (!hasMounted) return;
-
+    const controller = new AbortController();
     const handle = window.setTimeout(() => {
       startTransition(async () => {
         try {
@@ -61,7 +60,9 @@ export function ChartOfAccounts({
           if (typeFilter !== "All") params.set("type", typeFilter);
           if (activeFilter !== "all") params.set("active", activeFilter);
 
-          const response = await fetch(`/api/accounts?${params.toString()}`);
+          const response = await fetch(`/api/accounts?${params.toString()}`, {
+            signal: controller.signal,
+          });
           const data = (await response.json()) as {
             accounts?: AccountDTO[];
             groups?: AccountGroupSection[];
@@ -74,17 +75,44 @@ export function ChartOfAccounts({
           setAccounts(data.accounts ?? []);
           setGroups(data.groups ?? []);
           setError(null);
-        } catch {
+        } catch (err) {
+          if ((err as Error).name === "AbortError") return;
           setError("Unable to reach the server.");
         }
       });
     }, 250);
 
-    return () => window.clearTimeout(handle);
-  }, [search, typeFilter, activeFilter, refreshToken, hasMounted]);
+    return () => {
+      controller.abort();
+      window.clearTimeout(handle);
+    };
+  }, [search, typeFilter, activeFilter]);
 
-  function refresh() {
-    setRefreshToken((value) => value + 1);
+  async function reload() {
+    startTransition(async () => {
+      try {
+        const params = new URLSearchParams();
+        if (search.trim()) params.set("search", search.trim());
+        if (typeFilter !== "All") params.set("type", typeFilter);
+        if (activeFilter !== "all") params.set("active", activeFilter);
+
+        const response = await fetch(`/api/accounts?${params.toString()}`);
+        const data = (await response.json()) as {
+          accounts?: AccountDTO[];
+          groups?: AccountGroupSection[];
+          error?: string;
+        };
+        if (!response.ok) {
+          setError(data.error ?? "Failed to refresh accounts.");
+          return;
+        }
+        setAccounts(data.accounts ?? []);
+        setGroups(data.groups ?? []);
+        setError(null);
+      } catch {
+        setError("Unable to reach the server.");
+      }
+    });
   }
 
   async function toggleActive(account: AccountDTO) {
@@ -109,7 +137,7 @@ export function ChartOfAccounts({
           ? `Activated ${data.account.code} — ${data.account.name}`
           : `Deactivated ${data.account.code} — ${data.account.name}`,
       );
-      refresh();
+      await reload();
     } catch {
       setError("Unable to reach the server.");
     }
@@ -211,8 +239,9 @@ export function ChartOfAccounts({
 
       <p className="text-xs text-[var(--muted-strong)]">
         Accounts are grouped for hierarchy. Codes are immutable after creation; deactivate
-        instead of deleting when transactions exist ({accounts.filter((a) => a.hasTransactions).length}{" "}
-        accounts currently have posted lines).
+        instead of deleting when transactions exist (
+        {accounts.filter((a) => a.hasTransactions).length} accounts currently have posted
+        lines).
       </p>
 
       {modal ? (
@@ -231,7 +260,7 @@ export function ChartOfAccounts({
                 ? `Created ${account.code} — ${account.name}`
                 : `Updated ${account.code} — ${account.name}`,
             );
-            refresh();
+            void reload();
           }}
         />
       ) : null}
