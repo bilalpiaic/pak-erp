@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f1729;
+  --foreground: #e2e8f0;
+  --sidebar: #0a1628;
+  --panel: #132040;
+  --border: #1a3060;
+  --border-strong: #2d4070;
+  --accent: #c9a227;
+  --nav: #94a3b8;
+  --nav-active: #1a3565;
+  --nav-hover: rgba(26, 53, 101, 0.45);
+  --muted: #94a3b8;
+  --muted-strong: #475569;
+  --success: #86efac;
+  --success-bg: #14532d;
+  --warning: #fde68a;
+  --warning-bg: #713f12;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-source-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(201, 162, 39, 0.08), transparent 55%),
+    radial-gradient(900px 400px at 90% 0%, rgba(59, 130, 246, 0.07), transparent 50%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-source-sans), "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e2a45;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3d5080;
+  border-radius: 3px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
