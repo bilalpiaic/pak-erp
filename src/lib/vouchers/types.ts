@@ -41,6 +41,17 @@ export type VoucherLineDTO = {
   lineNarration: string | null;
 };
 
+export type VoucherAttachmentDTO = {
+  id: string;
+  voucherId: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageUrl: string;
+  uploadedBy: string | null;
+  createdAt: string;
+};
+
 export type VoucherDTO = {
   id: string;
   companyId: string;
@@ -65,6 +76,7 @@ export type VoucherDTO = {
   cancelledAt: string | null;
   updatedAt: string;
   lines: VoucherLineDTO[];
+  attachments: VoucherAttachmentDTO[];
 };
 
 export type VoucherListQuery = {

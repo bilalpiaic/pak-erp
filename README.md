@@ -37,7 +37,8 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Draft / post / cancel workflow (BPV, BRV, CPV, CRV, JV)
 - Frontend + backend debit=credit validation using integer cents
 - Posted vouchers immutable; cancel keeps audit trail
-- `/api/vouchers`, `/api/vouchers/:id`, `/post`, `/cancel`
+- Attachments: PDF / JPG / PNG / DOC / CSV / Excel (Vercel Blob or local upload)
+- `/api/vouchers`, `/api/vouchers/:id`, `/post`, `/cancel`, `/attachments`
 
 ### Phase 5 — Ledger & Journal
 

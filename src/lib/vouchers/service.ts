@@ -1,4 +1,10 @@
-import type { Prisma, Voucher, VoucherLine, VoucherType } from "@/generated/prisma/client";
+import type {
+  Prisma,
+  Voucher,
+  VoucherAttachment,
+  VoucherLine,
+  VoucherType,
+} from "@/generated/prisma/client";
 import { centsToDecimalString, isBalanced, sumCents, toCents } from "@/lib/accounting/money";
 import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
@@ -19,6 +25,7 @@ type VoucherWithLines = Voucher & {
       account: { id: bigint; code: string; name: string; isActive: boolean };
     }
   >;
+  attachments: VoucherAttachment[];
 };
 
 function decimalString(value: { toString(): string }): string {
@@ -70,6 +77,16 @@ function toVoucherDTO(voucher: VoucherWithLines): VoucherDTO {
       credit: decimalString(line.credit),
       lineNarration: line.lineNarration,
     })),
+    attachments: (voucher.attachments ?? []).map((row) => ({
+      id: row.id.toString(),
+      voucherId: row.voucherId.toString(),
+      fileName: row.fileName,
+      mimeType: row.mimeType,
+      sizeBytes: row.sizeBytes,
+      storageUrl: row.storageUrl,
+      uploadedBy: row.uploadedBy,
+      createdAt: row.createdAt.toISOString(),
+    })),
   });
 }
 
@@ -81,6 +98,9 @@ const voucherInclude = {
       },
     },
     orderBy: { id: "asc" as const },
+  },
+  attachments: {
+    orderBy: { createdAt: "desc" as const },
   },
 };
 
