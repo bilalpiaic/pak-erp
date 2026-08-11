@@ -1,0 +1,157 @@
+// GarmentLoop ERP V1 — Prisma schema
+// Accounting truth lives in PostgreSQL; balances are derived from posted lines.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum VoucherType {
+  BPV
+  BRV
+  CPV
+  CRV
+  JV
+}
+
+enum VoucherStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum NormalBalance {
+  Debit
+  Credit
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  POST
+  CANCEL
+  ACTIVATE
+  DEACTIVATE
+}
+
+model Company {
+  id               BigInt   @id @default(autoincrement())
+  name             String   @db.VarChar(200)
+  address          String?  @db.Text
+  ntn              String?  @db.VarChar(50)
+  strn             String?  @db.VarChar(50)
+  phone            String?  @db.VarChar(50)
+  email            String?  @db.VarChar(150)
+  currency         String   @default("PKR") @db.VarChar(10)
+  fiscalYearStart  Int      @default(7) @map("fiscal_year_start") // 1–12, default July
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  accounts    Account[]
+  vouchers    Voucher[]
+  fiscalYears FiscalYear[]
+  auditLogs   AuditLog[]
+
+  @@map("companies")
+}
+
+model FiscalYear {
+  id        BigInt   @id @default(autoincrement())
+  companyId BigInt   @map("company_id")
+  name      String   @db.VarChar(50)
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  isOpen    Boolean  @default(true) @map("is_open")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("fiscal_years")
+}
+
+model Account {
+  id            BigInt        @id @default(autoincrement())
+  companyId     BigInt        @map("company_id")
+  code          String        @db.VarChar(30)
+  name          String        @db.VarChar(200)
+  accountType   String        @map("account_type") @db.VarChar(30)
+  accountGroup  String?       @map("account_group") @db.VarChar(100)
+  normalBalance NormalBalance @map("normal_balance")
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company      Company       @relation(fields: [companyId], references: [id])
+  voucherLines VoucherLine[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@map("accounts")
+}
+
+model Voucher {
+  id          BigInt        @id @default(autoincrement())
+  companyId   BigInt        @map("company_id")
+  voucherNo   String        @map("voucher_no") @db.VarChar(50)
+  voucherType VoucherType   @map("voucher_type")
+  voucherDate DateTime      @map("voucher_date") @db.Date
+  referenceNo String?       @map("reference_no") @db.VarChar(100)
+  partyName   String?       @map("party_name") @db.VarChar(200)
+  narration   String?       @db.Text
+  status      VoucherStatus @default(DRAFT)
+  createdBy   String?       @map("created_by") @db.VarChar(100)
+  postedBy    String?       @map("posted_by") @db.VarChar(100)
+  cancelledBy String?       @map("cancelled_by") @db.VarChar(100)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  postedAt    DateTime?     @map("posted_at") @db.Timestamptz(6)
+  cancelledAt DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company       @relation(fields: [companyId], references: [id])
+  lines   VoucherLine[]
+
+  @@unique([companyId, voucherNo])
+  @@index([companyId, voucherDate])
+  @@index([companyId, status])
+  @@map("vouchers")
+}
+
+model VoucherLine {
+  id            BigInt  @id @default(autoincrement())
+  voucherId     BigInt  @map("voucher_id")
+  accountId     BigInt  @map("account_id")
+  lineNarration String? @map("line_narration") @db.Text
+  debit         Decimal @default(0.00) @db.Decimal(18, 2)
+  credit        Decimal @default(0.00) @db.Decimal(18, 2)
+
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([voucherId])
+  @@index([accountId])
+  @@map("voucher_lines")
+}
+
+model AuditLog {
+  id         BigInt      @id @default(autoincrement())
+  companyId  BigInt      @map("company_id")
+  actor      String?     @db.VarChar(100)
+  action     AuditAction
+  entity     String      @db.VarChar(50)
+  recordId   String      @map("record_id") @db.VarChar(50)
+  oldValue   Json?       @map("old_value")
+  newValue   Json?       @map("new_value")
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId, entity, recordId])
+  @@index([companyId, createdAt])
+  @@map("audit_logs")
+}
