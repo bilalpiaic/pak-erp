@@ -25,7 +25,33 @@ if [ -n "${DATABASE_URL:-}" ]; then
   elif [[ "${DATABASE_URL}" == *"-pooler."* ]]; then
     echo "Using non-pooler host derived from DATABASE_URL for migrations"
   fi
-  DATABASE_URL="$MIGRATE_URL" npx prisma migrate deploy
+
+  set +e
+  MIGRATE_OUT="$(DATABASE_URL="$MIGRATE_URL" npx prisma migrate deploy 2>&1)"
+  MIGRATE_CODE=$?
+  set -e
+  echo "$MIGRATE_OUT"
+
+  if [ "$MIGRATE_CODE" -ne 0 ]; then
+    echo "migrate deploy failed (exit $MIGRATE_CODE) — checking whether schema is already up to date"
+    set +e
+    STATUS_OUT="$(DATABASE_URL="$MIGRATE_URL" npx prisma migrate status 2>&1)"
+    STATUS_CODE=$?
+    set -e
+    echo "$STATUS_OUT"
+    if echo "$STATUS_OUT" | grep -qiE 'Database schema is up to date|No pending migrations'; then
+      echo "No pending migrations — continuing build"
+    elif echo "$MIGRATE_OUT" | grep -qi 'P1002' && echo "$STATUS_OUT" | grep -qiE 'Following migration.*have not yet been applied'; then
+      echo "ERROR: Pending migrations could not acquire advisory lock (P1002)."
+      exit "$MIGRATE_CODE"
+    elif echo "$MIGRATE_OUT" | grep -qi 'P1002'; then
+      # Lock timeout with no clear pending list — continue so deploys are not blocked
+      # when the migration history is already applied (common on Neon after parallel builds).
+      echo "WARNING: Advisory lock timeout (P1002). Continuing build; verify migrations manually if schema changed."
+    else
+      exit "$MIGRATE_CODE"
+    fi
+  fi
 else
   echo "WARNING: DATABASE_URL is not set — skipping migrate deploy"
   echo "Add DATABASE_URL in Vercel project settings to enable Neon/Postgres."

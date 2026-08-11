@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { centsToDecimalString, isBalanced, sumCents, toCents } from "@/lib/accounting/money";
 import type { AccountDTO } from "@/lib/accounts/types";
 import { formatCurrency } from "@/lib/formatting/money";
+import type { PartyDTO } from "@/lib/parties/types";
 import {
   VOUCHER_TYPE_LABELS,
   type VoucherDTO,
@@ -25,6 +26,7 @@ type VoucherFormProps = {
   voucherNo: string;
   initial?: VoucherDTO | null;
   accounts: AccountDTO[];
+  parties?: PartyDTO[];
   onBack: () => void;
   onSaved: (voucher: VoucherDTO) => void;
 };
@@ -39,6 +41,7 @@ export function VoucherForm({
   voucherNo,
   initial,
   accounts,
+  parties = [],
   onBack,
   onSaved,
 }: VoucherFormProps) {
@@ -48,10 +51,17 @@ export function VoucherForm({
     () => accounts.filter((a) => a.isActive).sort((a, b) => a.code.localeCompare(b.code)),
     [accounts],
   );
+  const activeParties = useMemo(
+    () => parties.filter((p) => p.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    [parties],
+  );
 
   const [voucherDate, setVoucherDate] = useState(initial?.voucherDate ?? todayIso());
   const [referenceNo, setReferenceNo] = useState(initial?.referenceNo ?? "");
+  const [partyId, setPartyId] = useState(initial?.partyId ?? "");
   const [partyName, setPartyName] = useState(initial?.partyName ?? "");
+  const [partyNtn, setPartyNtn] = useState(initial?.partyNtn ?? "");
+  const [whtApplicable, setWhtApplicable] = useState(Boolean(initial?.whtApplicable));
   const [narration, setNarration] = useState(initial?.narration ?? "");
   const [lines, setLines] = useState<LineDraft[]>(
     initial?.lines.length
@@ -90,7 +100,10 @@ export function VoucherForm({
       voucherType,
       voucherDate,
       referenceNo,
+      partyId: partyId || null,
       partyName,
+      partyNtn,
+      whtApplicable,
       narration,
       lines: lines
         .filter(
@@ -105,6 +118,15 @@ export function VoucherForm({
           lineNarration: line.lineNarration,
         })),
     };
+  }
+
+  function selectParty(id: string) {
+    setPartyId(id);
+    const party = activeParties.find((p) => p.id === id);
+    if (party) {
+      setPartyName(party.name);
+      setPartyNtn(party.ntn ?? "");
+    }
   }
 
   async function save(action: "draft" | "post") {
@@ -225,14 +247,56 @@ export function VoucherForm({
           </label>
           <label className="block md:col-span-1">
             <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+              Party (master)
+            </span>
+            <select
+              value={partyId}
+              disabled={readOnly}
+              onChange={(e) => selectParty(e.target.value)}
+              className="field-input"
+            >
+              <option value="">— Free-text / none —</option>
+              {activeParties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.partyType})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block md:col-span-1">
+            <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
               Party Name
             </span>
             <input
               value={partyName}
               disabled={readOnly}
-              onChange={(e) => setPartyName(e.target.value)}
+              onChange={(e) => {
+                setPartyName(e.target.value);
+                setPartyId("");
+              }}
               className="field-input"
             />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+              NTN / CNIC
+            </span>
+            <input
+              value={partyNtn}
+              disabled={readOnly}
+              onChange={(e) => setPartyNtn(e.target.value)}
+              className="field-input"
+            />
+          </label>
+          <label className="flex items-end gap-2 pb-2">
+            <input
+              type="checkbox"
+              checked={whtApplicable}
+              disabled={readOnly}
+              onChange={(e) => setWhtApplicable(e.target.checked)}
+              className="accent-[var(--accent)]"
+            />
+            <span className="text-[12px] text-[var(--muted)]">WHT applicable</span>
           </label>
           <label className="block md:col-span-2">
             <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
