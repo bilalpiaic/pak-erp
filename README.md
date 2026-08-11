@@ -20,7 +20,7 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 ### Phase 2 — Database
 
 - Prisma migration for companies, fiscal years, accounts, vouchers, voucher lines, audit logs
-- Seed data: Gill Embroidery, FY 2024-25, 40 accounts, 12 posted vouchers
+- Seed data: company, FY, chart of accounts, parties (no demo vouchers — blank voucher ledger)
 - Company Settings UI reads/writes PostgreSQL
 - `/api/company` and `/api/health`
 

@@ -90,7 +90,7 @@ export function LedgerView({
       </div>
 
       {error ? (
-        <p className="border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
@@ -150,7 +150,7 @@ export function LedgerView({
                       ? formatCurrency(data.opening.debit)
                       : ""}
                   </td>
-                  <td className="text-right font-mono text-red-300">
+                  <td className="text-right font-mono text-[var(--danger)]">
                     {Number(data.opening.credit) > 0
                       ? formatCurrency(data.opening.credit)
                       : ""}
@@ -178,7 +178,7 @@ export function LedgerView({
                       <td className="text-right font-mono text-[var(--success)]">
                         {Number(txn.debit) > 0 ? formatCurrency(txn.debit) : ""}
                       </td>
-                      <td className="text-right font-mono text-red-300">
+                      <td className="text-right font-mono text-[var(--danger)]">
                         {Number(txn.credit) > 0 ? formatCurrency(txn.credit) : ""}
                       </td>
                       <td className="text-right font-mono">
@@ -195,7 +195,7 @@ export function LedgerView({
                   <td className="text-right font-mono text-[var(--success)]">
                     {formatCurrency(data.period.debit)}
                   </td>
-                  <td className="text-right font-mono text-red-300">
+                  <td className="text-right font-mono text-[var(--danger)]">
                     {formatCurrency(data.period.credit)}
                   </td>
                   <td className="text-right font-mono">
@@ -227,7 +227,7 @@ function Stat({
     tone === "success"
       ? "text-[var(--success)]"
       : tone === "danger"
-        ? "text-red-300"
+        ? "text-[var(--danger)]"
         : "text-[var(--foreground)]";
   return (
     <div className="border border-[var(--border)] bg-[var(--panel)] px-3 py-2">

@@ -70,7 +70,7 @@ export function ReportView({ type, title, initial, loadError = null }: ReportVie
       </div>
 
       {error ? (
-        <p className="border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
@@ -150,7 +150,7 @@ function TrialBalanceBody({ data }: { data: Record<string, unknown> }) {
                 <td className="text-right font-mono text-[var(--success)]">
                   {Number(item.debit) > 0 ? formatCurrency(item.debit) : ""}
                 </td>
-                <td className="text-right font-mono text-red-300">
+                <td className="text-right font-mono text-[var(--danger)]">
                   {Number(item.credit) > 0 ? formatCurrency(item.credit) : ""}
                 </td>
               </tr>
@@ -164,7 +164,7 @@ function TrialBalanceBody({ data }: { data: Record<string, unknown> }) {
                   ? formatCurrency(section.subtotalDebit)
                   : ""}
               </td>
-              <td className="text-right font-mono font-semibold text-red-300">
+              <td className="text-right font-mono font-semibold text-[var(--danger)]">
                 {Number(section.subtotalCredit) > 0
                   ? formatCurrency(section.subtotalCredit)
                   : ""}
@@ -180,7 +180,7 @@ function TrialBalanceBody({ data }: { data: Record<string, unknown> }) {
             </td>
             <td
               className={`text-right font-mono ${
-                totals.balanced ? "text-[var(--success)]" : "text-red-300"
+                totals.balanced ? "text-[var(--success)]" : "text-[var(--danger)]"
               }`}
             >
               {formatCurrency(totals.credit)}
@@ -194,7 +194,7 @@ function TrialBalanceBody({ data }: { data: Record<string, unknown> }) {
             Trial Balance is balanced
           </span>
         ) : (
-          <span className="rounded bg-red-950 px-3 py-1 text-red-200">
+          <span className="rounded bg-[var(--danger-bg)] px-3 py-1 text-[var(--danger)]">
             Difference {formatCurrency(totals.difference)}
           </span>
         )}
@@ -256,7 +256,7 @@ function BalanceSheetBody({ data }: { data: Record<string, unknown> }) {
             Assets = Equity + Liabilities
           </span>
         ) : (
-          <span className="rounded bg-red-950 px-3 py-1 text-red-200">
+          <span className="rounded bg-[var(--danger-bg)] px-3 py-1 text-[var(--danger)]">
             Out of balance by {formatCurrency(check.difference)}
           </span>
         )}
@@ -287,7 +287,7 @@ function StatementColumn({
               <td
                 className={`text-right font-mono ${
                   row.bold ? "font-semibold text-[var(--accent)]" : ""
-                } ${Number(row.amount) < 0 ? "text-red-300" : ""}`}
+                } ${Number(row.amount) < 0 ? "text-[var(--danger)]" : ""}`}
               >
                 {formatCurrency(row.amount)}
               </td>
@@ -332,7 +332,7 @@ function StatementLinesBody({ data }: { data: Record<string, unknown> }) {
                 <td
                   className={`text-right font-mono ${
                     line.bold ? "font-semibold" : ""
-                  } ${line.amount && Number(line.amount) < 0 ? "text-red-300" : ""} ${
+                  } ${line.amount && Number(line.amount) < 0 ? "text-[var(--danger)]" : ""} ${
                     line.bold ? "text-[var(--accent)]" : ""
                   }`}
                 >
@@ -382,7 +382,7 @@ function AgingBody({
   return (
     <div className="space-y-3">
       {showWht && whtPending && Number(whtPending) > 0 ? (
-        <div className="border border-red-800 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+        <div className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-xs text-[var(--danger)]">
           FBR WHT alert: {formatCurrency(whtPending)} in creditor balances have withholding tax
           pending.
         </div>
@@ -393,7 +393,7 @@ function AgingBody({
           { l: "Current (0–30d)", v: totals.current, c: "text-[var(--success)]" },
           { l: "31–60 days", v: totals.d31, c: "text-yellow-300" },
           { l: "61–90 days", v: totals.d61, c: "text-orange-300" },
-          { l: "Over 90 days", v: totals.over90, c: "text-red-300" },
+          { l: "Over 90 days", v: totals.over90, c: "text-[var(--danger)]" },
         ].map((x) => (
           <div key={x.l} className="border border-[var(--border)] px-3 py-2">
             <div className="text-[10px] text-[var(--muted)]">{x.l}</div>
@@ -449,7 +449,7 @@ function AgingBody({
                       className={`rounded px-2 py-0.5 text-[10px] ${
                         p.whtStatus === "Deducted"
                           ? "bg-[var(--success-bg)] text-[var(--success)]"
-                          : "bg-red-950 text-red-200"
+                          : "bg-red-950 text-[var(--danger)]"
                       }`}
                     >
                       {p.whtStatus ?? "—"}

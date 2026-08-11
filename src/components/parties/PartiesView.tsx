@@ -187,7 +187,7 @@ export function PartiesView({ initialParties, loadError = null }: PartiesViewPro
       </div>
 
       {error ? (
-        <p className="border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
@@ -336,7 +336,7 @@ export function PartiesView({ initialParties, loadError = null }: PartiesViewPro
                       className={`rounded px-2 py-0.5 text-[10px] ${
                         party.isActive
                           ? "bg-[var(--success-bg)] text-[var(--success)]"
-                          : "bg-red-950 text-red-200"
+                          : "bg-red-950 text-[var(--danger)]"
                       }`}
                     >
                       {party.isActive ? "Active" : "Inactive"}

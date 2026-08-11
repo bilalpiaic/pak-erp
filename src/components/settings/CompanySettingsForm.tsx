@@ -182,7 +182,7 @@ export function CompanySettingsForm({ company, fiscalYear }: CompanySettingsForm
       )}
 
       {error ? (
-        <p className="text-sm text-red-300" role="alert">
+        <p className="text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
@@ -196,7 +196,7 @@ export function CompanySettingsForm({ company, fiscalYear }: CompanySettingsForm
         <button
           type="submit"
           disabled={pending}
-          className="bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#0a1628] disabled:opacity-60"
+          className="bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] disabled:opacity-60"
         >
           {pending ? "Saving…" : company ? "Save Changes" : "Create Company"}
         </button>

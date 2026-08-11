@@ -398,7 +398,7 @@ export function VoucherForm({
                 </tr>
               );
             })}
-            <tr className="bg-[#1a2540]">
+            <tr className="bg-[var(--table-head)]">
               <td
                 colSpan={2}
                 className="px-3 py-2 text-right text-xs font-semibold text-[var(--accent)]"
@@ -431,7 +431,7 @@ export function VoucherForm({
       </div>
 
       {error ? (
-        <p className="text-sm text-red-300" role="alert">
+        <p className="text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
@@ -446,7 +446,7 @@ export function VoucherForm({
                 { accountId: "", debit: "", credit: "", lineNarration: "" },
               ])
             }
-            className="bg-[#1e3060] px-3 py-2 text-xs text-[#93c5fd]"
+            className="bg-white border border-[var(--border-strong)] px-3 py-2 text-xs text-[var(--foreground)]"
           >
             + Add Line
           </button>
@@ -463,7 +463,7 @@ export function VoucherForm({
             type="button"
             disabled={pending || !balanced}
             onClick={() => void save("post")}
-            className="bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[#0a1628] disabled:bg-[#3d3d3d] disabled:text-[#666]"
+            className="bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink)] disabled:opacity-60"
           >
             {balanced ? "✓ Post Voucher" : "Post (Balance First)"}
           </button>

@@ -183,7 +183,7 @@ export function ChartOfAccounts({
             setEditing(null);
             setModal("create");
           }}
-          className="bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[#0a1628]"
+          className="bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink)]"
         >
           + New Account
         </button>
@@ -195,7 +195,7 @@ export function ChartOfAccounts({
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-red-300" role="alert">
+        <p className="text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
@@ -204,13 +204,13 @@ export function ChartOfAccounts({
         <table className="w-full min-w-[720px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Code</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Account Name</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Group</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Type</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Normal Bal</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Status</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Actions</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Code</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Account Name</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Group</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Type</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Normal Bal</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Status</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -304,7 +304,7 @@ function GroupRows({
             <span
               className="inline-block px-2 py-0.5 text-[10px] font-semibold"
               style={{
-                background: "#1e3060",
+                background: "var(--nav-active)",
                 color: TYPE_COLORS[account.accountType] ?? "#94a3b8",
               }}
             >
@@ -328,14 +328,14 @@ function GroupRows({
               <button
                 type="button"
                 onClick={() => onEdit(account)}
-                className="bg-[#1e3060] px-2.5 py-1 text-[11px] text-[#93c5fd]"
+                className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
               >
                 Edit
               </button>
               <button
                 type="button"
                 onClick={() => onToggle(account)}
-                className="bg-[#1e3060] px-2.5 py-1 text-[11px] text-[var(--warning)]"
+                className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--warning)]"
               >
                 {account.isActive ? "Deactivate" : "Activate"}
               </button>
