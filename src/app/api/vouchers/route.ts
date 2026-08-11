@@ -7,7 +7,7 @@ import {
   nextVoucherNo,
 } from "@/lib/vouchers/service";
 import type { VoucherInput, VoucherListQuery, VoucherTypeValue } from "@/lib/vouchers/types";
-import { VOUCHER_TYPES } from "@/lib/vouchers/types";
+import { ALL_VOUCHER_TYPES, VOUCHER_TYPES } from "@/lib/vouchers/types";
 
 export const runtime = "nodejs";
 
@@ -17,8 +17,14 @@ export async function GET(request: Request) {
 
     if (searchParams.get("nextNumber")) {
       const type = searchParams.get("nextNumber") as VoucherTypeValue;
-      if (!VOUCHER_TYPES.includes(type)) {
+      if (!ALL_VOUCHER_TYPES.includes(type)) {
         return NextResponse.json({ error: "Invalid voucher type." }, { status: 400 });
+      }
+      if (!(VOUCHER_TYPES as readonly string[]).includes(type)) {
+        return NextResponse.json(
+          { error: "Sales invoice numbers are allocated under Sales Invoices." },
+          { status: 400 },
+        );
       }
       const voucherNo = await nextVoucherNo(type);
       return NextResponse.json({ voucherNo });

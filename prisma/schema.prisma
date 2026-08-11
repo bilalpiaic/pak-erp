@@ -16,6 +16,7 @@ enum VoucherType {
   CPV
   CRV
   JV
+  SI
 }
 
 enum VoucherStatus {
@@ -57,11 +58,12 @@ model Company {
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  accounts    Account[]
-  vouchers    Voucher[]
-  parties     Party[]
-  fiscalYears FiscalYear[]
-  auditLogs   AuditLog[]
+  accounts       Account[]
+  vouchers       Voucher[]
+  parties        Party[]
+  fiscalYears    FiscalYear[]
+  auditLogs      AuditLog[]
+  salesInvoices  SalesInvoice[]
 
   @@map("companies")
 }
@@ -83,8 +85,9 @@ model Party {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company  Company   @relation(fields: [companyId], references: [id])
-  vouchers Voucher[]
+  company       Company        @relation(fields: [companyId], references: [id])
+  vouchers      Voucher[]
+  salesInvoices SalesInvoice[]
 
   @@unique([companyId, name])
   @@index([companyId, partyType])
@@ -148,16 +151,67 @@ model Voucher {
   cancelledAt DateTime?     @map("cancelled_at") @db.Timestamptz(6)
   updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company Company       @relation(fields: [companyId], references: [id])
-  party   Party?        @relation(fields: [partyId], references: [id])
-  lines   VoucherLine[]
-  attachments VoucherAttachment[]
+  company      Company        @relation(fields: [companyId], references: [id])
+  party        Party?         @relation(fields: [partyId], references: [id])
+  lines        VoucherLine[]
+  attachments  VoucherAttachment[]
+  salesInvoice SalesInvoice?
 
   @@unique([companyId, voucherNo])
   @@index([companyId, voucherDate])
   @@index([companyId, status])
   @@index([partyId])
   @@map("vouchers")
+}
+
+/// Commercial sales invoice — posts Dr Trade Debtors / Cr Sales via linked SI voucher.
+model SalesInvoice {
+  id          BigInt        @id @default(autoincrement())
+  companyId   BigInt        @map("company_id")
+  voucherId   BigInt?       @unique @map("voucher_id")
+  invoiceNo   String        @map("invoice_no") @db.VarChar(50)
+  invoiceDate DateTime      @map("invoice_date") @db.Date
+  partyId     BigInt        @map("party_id")
+  partyName   String        @map("party_name") @db.VarChar(200)
+  partyNtn    String?       @map("party_ntn") @db.VarChar(50)
+  poNumber    String?       @map("po_number") @db.VarChar(100)
+  narration   String?       @db.Text
+  status      VoucherStatus @default(DRAFT)
+  totalAmount Decimal       @default(0.00) @map("total_amount") @db.Decimal(18, 2)
+  createdBy   String?       @map("created_by") @db.VarChar(100)
+  postedBy    String?       @map("posted_by") @db.VarChar(100)
+  cancelledBy String?       @map("cancelled_by") @db.VarChar(100)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  postedAt    DateTime?     @map("posted_at") @db.Timestamptz(6)
+  cancelledAt DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company            @relation(fields: [companyId], references: [id])
+  party   Party              @relation(fields: [partyId], references: [id])
+  voucher Voucher?           @relation(fields: [voucherId], references: [id])
+  lines   SalesInvoiceLine[]
+
+  @@unique([companyId, invoiceNo])
+  @@index([companyId, invoiceDate])
+  @@index([companyId, status])
+  @@index([partyId])
+  @@map("sales_invoices")
+}
+
+model SalesInvoiceLine {
+  id             BigInt  @id @default(autoincrement())
+  salesInvoiceId BigInt  @map("sales_invoice_id")
+  lineNo         Int     @map("line_no")
+  item           String  @db.VarChar(200)
+  detail         String? @db.Text
+  quantity       Decimal @db.Decimal(18, 4)
+  rate           Decimal @db.Decimal(18, 4)
+  amount         Decimal @db.Decimal(18, 2)
+
+  salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([salesInvoiceId])
+  @@map("sales_invoice_lines")
 }
 
 model VoucherAttachment {

@@ -1,6 +1,6 @@
 import { centsToDecimalString, isBalanced, sumCents, toCents } from "@/lib/accounting/money";
 
-import { VOUCHER_TYPES, type VoucherInput, type VoucherLineInput } from "./types";
+import { ALL_VOUCHER_TYPES, type VoucherInput, type VoucherLineInput } from "./types";
 
 export type NormalizedLine = {
   accountId: bigint;
@@ -37,7 +37,7 @@ export function validateVoucherInput(
 ): ValidationResult {
   const errors: string[] = [];
 
-  if (!VOUCHER_TYPES.includes(input.voucherType)) {
+  if (!ALL_VOUCHER_TYPES.includes(input.voucherType)) {
     errors.push("Voucher type is invalid.");
   }
 
