@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { PrintButton } from "@/components/print/PrintButton";
 import { formatCurrency } from "@/lib/formatting/money";
 import {
   PARTY_TYPES,
@@ -184,6 +185,7 @@ export function PartiesView({ initialParties, loadError = null }: PartiesViewPro
         <button type="button" className="btn-secondary" disabled={pending} onClick={refresh}>
           Refresh
         </button>
+        <PrintButton />
       </div>
 
       {error ? (

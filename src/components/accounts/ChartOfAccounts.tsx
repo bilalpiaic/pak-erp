@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { AccountFormModal } from "@/components/accounts/AccountFormModal";
+import { PrintButton } from "@/components/print/PrintButton";
 import {
   ACCOUNT_TYPES,
   type AccountDTO,
@@ -145,7 +146,7 @@ export function ChartOfAccounts({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           <input
             value={search}
@@ -177,31 +178,39 @@ export function ChartOfAccounts({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setEditing(null);
-            setModal("create");
-          }}
-          className="bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink)]"
-        >
-          + New Account
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <PrintButton />
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setModal("create");
+            }}
+            className="bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink)]"
+          >
+            + New Account
+          </button>
+        </div>
       </div>
 
       {message ? (
-        <p className="text-sm text-[var(--success)]" role="status">
+        <p className="no-print text-sm text-[var(--success)]" role="status">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-[var(--danger)]" role="alert">
+        <p className="no-print text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
 
+      <div className="print-only mb-2 text-center">
+        <div className="text-base font-semibold">Chart of Accounts</div>
+        <div className="text-xs text-[var(--muted)]">{visibleCount} accounts</div>
+      </div>
+
       <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
-        <table className="w-full min-w-[720px] border-collapse text-left">
+        <table className="data-table w-full min-w-[720px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Code</th>

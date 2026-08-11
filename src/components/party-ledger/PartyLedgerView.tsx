@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { PrintButton } from "@/components/print/PrintButton";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import { formatCurrency } from "@/lib/formatting/money";
@@ -140,14 +141,7 @@ export function PartyLedgerView({
         <button type="button" disabled={pending} onClick={load} className="btn-primary">
           {pending ? "Loading…" : "Apply"}
         </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          disabled={!data}
-          onClick={() => window.print()}
-        >
-          Print
-        </button>
+        <PrintButton disabled={!data} />
       </div>
 
       {error ? (

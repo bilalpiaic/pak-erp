@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { PrintButton } from "@/components/print/PrintButton";
 import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { ReportType } from "@/lib/reports/service";
@@ -64,9 +65,7 @@ export function ReportView({ type, title, initial, loadError = null }: ReportVie
         <button type="button" disabled={pending} onClick={load} className="btn-primary">
           {pending ? "Loading…" : "Apply"}
         </button>
-        <button type="button" className="btn-secondary" onClick={() => window.print()}>
-          Print
-        </button>
+        <PrintButton disabled={!data} />
       </div>
 
       {error ? (

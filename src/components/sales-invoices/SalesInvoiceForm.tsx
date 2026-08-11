@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
+import { PrintButton } from "@/components/print/PrintButton";
 import { SalesInvoicePrint } from "@/components/sales-invoices/SalesInvoicePrint";
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
 import type { CompanyDTO } from "@/lib/company/types";
@@ -28,6 +29,7 @@ type SalesInvoiceFormProps = {
   initial?: SalesInvoiceDTO | null;
   parties: PartyDTO[];
   company: CompanyDTO | null;
+  autoPrint?: boolean;
   onBack: () => void;
   onSaved: (invoice: SalesInvoiceDTO) => void;
 };
@@ -53,11 +55,18 @@ export function SalesInvoiceForm({
   initial,
   parties: initialParties,
   company,
+  autoPrint = false,
   onBack,
   onSaved,
 }: SalesInvoiceFormProps) {
   const readOnly =
     mode === "view" || initial?.status === "POSTED" || initial?.status === "CANCELLED";
+
+  useEffect(() => {
+    if (!autoPrint) return;
+    const timer = window.setTimeout(() => window.print(), 350);
+    return () => window.clearTimeout(timer);
+  }, [autoPrint]);
 
   const [partyOptions, setPartyOptions] = useState(initialParties);
   const [showPartyModal, setShowPartyModal] = useState(false);
@@ -227,13 +236,7 @@ export function SalesInvoiceForm({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => window.print()}
-          >
-            Print
-          </button>
+          <PrintButton />
           {!readOnly ? (
             <>
               <button
