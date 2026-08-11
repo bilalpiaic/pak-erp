@@ -76,23 +76,103 @@ a {
   border-width: 0;
 }
 
-@media (max-width: 767px) {
-  body {
-    font-size: 12px;
-  }
-}
-
 .field-input {
-  width: 100%;
-  border: 1px solid var(--border-strong);
   background: #1e2a45;
+  border: 1px solid var(--border-strong);
   color: var(--foreground);
-  padding: 0.5rem 0.7rem;
-  font-size: 0.8125rem;
-  border-radius: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  width: 100%;
 }
 
 .field-input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.btn-primary,
+.btn-secondary {
+  border: 1px solid transparent;
+  padding: 7px 12px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #0a1628;
+  font-weight: 600;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #1e3060;
+  color: #93c5fd;
+  border-color: var(--border-strong);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  background: #1a2540;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #1a2540;
+  font-size: 12px;
+  vertical-align: top;
+}
+
+.data-table tbody tr:hover td {
+  background: rgba(26, 37, 64, 0.45);
+}
+
+.data-table tfoot td {
+  padding: 8px 10px;
+}
+
+@media print {
+  aside,
+  .no-print,
+  [data-sidebar],
+  button {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .data-table th {
+    background: #eee !important;
+    color: #000 !important;
+  }
+
+  .data-table td {
+    border-color: #ccc !important;
+  }
+}
+
+@media (max-width: 767px) {
+  body {
+    font-size: 12px;
+  }
 }

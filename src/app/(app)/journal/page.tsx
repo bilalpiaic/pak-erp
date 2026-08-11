@@ -1,16 +1,28 @@
+import { JournalView } from "@/components/journal/JournalView";
 import { PageShell } from "@/components/ui/PageShell";
-import { PhasePlaceholder } from "@/components/ui/PhasePlaceholder";
+import { getJournal } from "@/lib/journal/service";
 
-export default function JournalPage() {
+export const dynamic = "force-dynamic";
+
+export default async function JournalPage() {
+  let initial = null;
+  let loadError: string | null = null;
+
+  try {
+    initial = await getJournal();
+  } catch (error) {
+    loadError =
+      error instanceof Error
+        ? error.message
+        : "Database is unavailable. Check DATABASE_URL and run migrations.";
+  }
+
   return (
     <PageShell
       title="General Journal"
       description="Posted accounting lines with date, voucher, account, party, debit, and credit."
     >
-      <PhasePlaceholder
-        phase="Phase 5 — Ledger & Journal"
-        summary="Filterable journal of posted voucher lines with debit/credit totals and balance check."
-      />
+      <JournalView initial={initial} loadError={loadError} />
     </PageShell>
   );
 }
