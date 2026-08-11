@@ -80,13 +80,13 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Printable sales invoice with company letterhead
 - `/api/sales-invoices`, `/api/sales-invoices/:id`, `/post`, `/cancel`
 
-### Phase 12 — Fiscal year selection
+### Phase 13 — COA report links (BS / P&L / CF)
 
-- User-selectable active fiscal year (sidebar dropdown, cookie-persisted)
-- Create next FY / open / close from Settings
-- Journal, ledgers, and reports default date range follows the selected FY
-- Creating a company auto-creates the current fiscal year
-- `/api/fiscal-years`, `/api/fiscal-years/:id`, `/api/fiscal-years/select`
+- Accounts carry Balance Sheet head, Profit & Loss head, and Cash Flow link
+- New account form cascades Type → COA group → BS/P&L head → CF link
+- BS, P&L, and Cash Flow statements aggregate by these links (not hardcoded codes)
+- COA list shows BS / P&L / CF columns
+
 
 
 The legacy single-file prototype lives in `legacy/index.html`.

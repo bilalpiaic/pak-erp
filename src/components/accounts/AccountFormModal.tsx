@@ -1,14 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
-  ACCOUNT_GROUPS,
   ACCOUNT_TYPES,
   NORMAL_BALANCES,
   type AccountDTO,
   type AccountInput,
+  type AccountType,
 } from "@/lib/accounts/types";
+import {
+  BS_BY_TYPE,
+  BS_SECTION_LABELS,
+  CF_BY_TYPE,
+  CF_LINK_LABELS,
+  GROUPS_BY_TYPE,
+  PL_BY_TYPE,
+  PL_SECTION_LABELS,
+  defaultsForTypeGroup,
+  suggestCfLink,
+  type BsSection,
+  type CfLink,
+  type PlSection,
+} from "@/lib/accounts/report-links";
 
 type AccountFormModalProps = {
   mode: "create" | "edit";
@@ -17,14 +31,20 @@ type AccountFormModalProps = {
   onSaved: (account: AccountDTO) => void;
 };
 
-const blank: AccountInput = {
-  code: "",
-  name: "",
-  accountType: "Asset",
-  accountGroup: "Current Assets",
-  normalBalance: "Debit",
-  isActive: true,
-};
+function blankForm(): AccountInput {
+  const defaults = defaultsForTypeGroup("Asset", "Current Assets");
+  return {
+    code: "",
+    name: "",
+    accountType: "Asset",
+    accountGroup: defaults.accountGroup,
+    bsSection: defaults.bsSection,
+    plSection: defaults.plSection,
+    cfLink: defaults.cfLink,
+    normalBalance: defaults.normalBalance,
+    isActive: true,
+  };
+}
 
 export function AccountFormModal({
   mode,
@@ -32,7 +52,7 @@ export function AccountFormModal({
   onClose,
   onSaved,
 }: AccountFormModalProps) {
-  const [form, setForm] = useState<AccountInput>(blank);
+  const [form, setForm] = useState<AccountInput>(blankForm);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -42,12 +62,15 @@ export function AccountFormModal({
         code: account.code,
         name: account.name,
         accountType: account.accountType,
-        accountGroup: account.accountGroup ?? "Current Assets",
+        accountGroup: account.accountGroup ?? defaultsForTypeGroup(account.accountType).accountGroup,
+        bsSection: account.bsSection,
+        plSection: account.plSection,
+        cfLink: account.cfLink,
         normalBalance: account.normalBalance,
         isActive: account.isActive,
       });
     } else {
-      setForm(blank);
+      setForm(blankForm());
     }
   }, [mode, account]);
 
@@ -59,8 +82,66 @@ export function AccountFormModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const groupOptions = useMemo(
+    () => GROUPS_BY_TYPE[form.accountType] ?? [],
+    [form.accountType],
+  );
+  const bsOptions = useMemo(() => BS_BY_TYPE[form.accountType] ?? [], [form.accountType]);
+  const plOptions = useMemo(() => PL_BY_TYPE[form.accountType] ?? [], [form.accountType]);
+  const cfOptions = useMemo(() => CF_BY_TYPE[form.accountType] ?? [], [form.accountType]);
+
+  const isBalanceSheetType =
+    form.accountType === "Asset" ||
+    form.accountType === "Liability" ||
+    form.accountType === "Equity";
+
   function updateField<K extends keyof AccountInput>(key: K, value: AccountInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+    setError(null);
+  }
+
+  function onTypeChange(nextType: AccountType) {
+    const defaults = defaultsForTypeGroup(nextType);
+    setForm((prev) => ({
+      ...prev,
+      accountType: nextType,
+      accountGroup: defaults.accountGroup,
+      normalBalance: defaults.normalBalance,
+      bsSection: defaults.bsSection,
+      plSection: defaults.plSection,
+      cfLink: defaults.cfLink,
+    }));
+    setError(null);
+  }
+
+  function onGroupChange(group: string) {
+    const defaults = defaultsForTypeGroup(form.accountType, group);
+    setForm((prev) => ({
+      ...prev,
+      accountGroup: group,
+      bsSection: defaults.bsSection,
+      plSection: defaults.plSection,
+      cfLink: defaults.cfLink,
+      normalBalance: defaults.normalBalance,
+    }));
+    setError(null);
+  }
+
+  function onBsChange(bsSection: BsSection) {
+    setForm((prev) => ({
+      ...prev,
+      bsSection,
+      cfLink: suggestCfLink(prev.accountType, bsSection, (prev.plSection as PlSection) ?? "None"),
+    }));
+    setError(null);
+  }
+
+  function onPlChange(plSection: PlSection) {
+    setForm((prev) => ({
+      ...prev,
+      plSection,
+      cfLink: suggestCfLink(prev.accountType, (prev.bsSection as BsSection) ?? "None", plSection),
+    }));
     setError(null);
   }
 
@@ -97,7 +178,7 @@ export function AccountFormModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="account-modal-title"
-        className="w-full max-w-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <h2 id="account-modal-title" className="text-sm font-semibold text-[var(--accent)]">
@@ -142,14 +223,31 @@ export function AccountFormModal({
 
             <label className="block">
               <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-                Group
+                Type (BS / P&L class) *
+              </span>
+              <select
+                value={form.accountType}
+                onChange={(e) => onTypeChange(e.target.value as AccountType)}
+                className="field-input"
+              >
+                {ACCOUNT_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                COA Sub-group *
               </span>
               <select
                 value={form.accountGroup ?? ""}
-                onChange={(e) => updateField("accountGroup", e.target.value)}
+                onChange={(e) => onGroupChange(e.target.value)}
                 className="field-input"
               >
-                {ACCOUNT_GROUPS.map((group) => (
+                {groupOptions.map((group) => (
                   <option key={group} value={group}>
                     {group}
                   </option>
@@ -159,21 +257,58 @@ export function AccountFormModal({
 
             <label className="block">
               <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-                Type
+                Balance Sheet head {isBalanceSheetType ? "*" : ""}
               </span>
               <select
-                value={form.accountType}
-                onChange={(e) =>
-                  updateField("accountType", e.target.value as AccountInput["accountType"])
-                }
+                value={form.bsSection ?? "None"}
+                onChange={(e) => onBsChange(e.target.value as BsSection)}
                 className="field-input"
+                disabled={!isBalanceSheetType}
               >
-                {ACCOUNT_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                {bsOptions.map((section) => (
+                  <option key={section} value={section}>
+                    {BS_SECTION_LABELS[section]}
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                Profit &amp; Loss head {!isBalanceSheetType ? "*" : ""}
+              </span>
+              <select
+                value={form.plSection ?? "None"}
+                onChange={(e) => onPlChange(e.target.value as PlSection)}
+                className="field-input"
+                disabled={isBalanceSheetType}
+              >
+                {plOptions.map((section) => (
+                  <option key={section} value={section}>
+                    {PL_SECTION_LABELS[section]}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                Cash Flow link
+              </span>
+              <select
+                value={form.cfLink ?? "None"}
+                onChange={(e) => updateField("cfLink", e.target.value as CfLink)}
+                className="field-input"
+              >
+                {cfOptions.map((link) => (
+                  <option key={link} value={link}>
+                    {CF_LINK_LABELS[link]}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[10px] text-[var(--muted-strong)]">
+                New accounts roll into BS / P&amp;L / CF from these links — not from account code.
+              </span>
             </label>
 
             <label className="block">

@@ -4,12 +4,28 @@ import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
 
 import {
+  BS_BY_TYPE,
+  CF_BY_TYPE,
+  GROUPS_BY_TYPE,
+  PL_BY_TYPE,
+  defaultsForTypeGroup,
+  isBsSection,
+  isCfLink,
+  isPlSection,
+  type BsSection,
+  type CfLink,
+  type PlSection,
+} from "./report-links";
+import {
+  ACCOUNT_GROUPS,
   ACCOUNT_TYPES,
   NORMAL_BALANCES,
   type AccountDTO,
+  type AccountGroup,
   type AccountGroupSection,
   type AccountInput,
   type AccountListQuery,
+  type AccountType,
 } from "./types";
 
 function toAccountDTO(
@@ -22,6 +38,9 @@ function toAccountDTO(
     name: account.name,
     accountType: account.accountType as AccountDTO["accountType"],
     accountGroup: account.accountGroup,
+    bsSection: account.bsSection,
+    plSection: account.plSection,
+    cfLink: account.cfLink,
     normalBalance: account.normalBalance,
     isActive: account.isActive,
     hasTransactions: (account._count?.voucherLines ?? 0) > 0,
@@ -36,6 +55,20 @@ async function requireCompanyId(): Promise<bigint> {
     throw new Error("No company found. Create a company in Settings first.");
   }
   return BigInt(company.id);
+}
+
+function resolveReportLinks(input: AccountInput): {
+  accountGroup: string | null;
+  bsSection: BsSection;
+  plSection: PlSection;
+  cfLink: CfLink;
+} {
+  const defaults = defaultsForTypeGroup(input.accountType, input.accountGroup);
+  const bsSection = isBsSection(input.bsSection) ? input.bsSection : defaults.bsSection;
+  const plSection = isPlSection(input.plSection) ? input.plSection : defaults.plSection;
+  const cfLink = isCfLink(input.cfLink) ? input.cfLink : defaults.cfLink;
+  const accountGroup = input.accountGroup?.trim() || defaults.accountGroup;
+  return { accountGroup, bsSection, plSection, cfLink };
 }
 
 export function validateAccountInput(
@@ -71,6 +104,59 @@ export function validateAccountInput(
     errors.push("Account group must be 100 characters or fewer.");
   }
 
+  if (
+    input.accountGroup &&
+    ACCOUNT_TYPES.includes(input.accountType) &&
+    !(GROUPS_BY_TYPE[input.accountType] as readonly string[]).includes(input.accountGroup) &&
+    !(ACCOUNT_GROUPS as readonly string[]).includes(input.accountGroup)
+  ) {
+    errors.push("Account group is not valid for the selected type.");
+  }
+
+  if (
+    ACCOUNT_TYPES.includes(input.accountType) &&
+    input.accountGroup &&
+    (ACCOUNT_GROUPS as readonly string[]).includes(input.accountGroup) &&
+    !(GROUPS_BY_TYPE[input.accountType] as readonly string[]).includes(input.accountGroup)
+  ) {
+    errors.push(
+      `Group "${input.accountGroup}" does not belong under ${input.accountType} (BS/P&L hierarchy).`,
+    );
+  }
+
+  const links = resolveReportLinks(input);
+  const type = input.accountType as AccountType;
+
+  if (ACCOUNT_TYPES.includes(type)) {
+    if (!(BS_BY_TYPE[type] as readonly string[]).includes(links.bsSection)) {
+      errors.push("Balance Sheet head is not valid for this account type.");
+    }
+    if (!(PL_BY_TYPE[type] as readonly string[]).includes(links.plSection)) {
+      errors.push("Profit & Loss head is not valid for this account type.");
+    }
+    if (!(CF_BY_TYPE[type] as readonly string[]).includes(links.cfLink)) {
+      errors.push("Cash Flow link is not valid for this account type.");
+    }
+
+    if (type === "Asset" || type === "Liability" || type === "Equity") {
+      if (links.bsSection === "None") {
+        errors.push("Balance Sheet head is required for Asset / Liability / Equity accounts.");
+      }
+      if (links.plSection !== "None") {
+        errors.push("P&L head must be None for Balance Sheet accounts.");
+      }
+    }
+
+    if (type === "Revenue" || type === "Expense") {
+      if (links.plSection === "None") {
+        errors.push("Profit & Loss head is required for Revenue / Expense accounts.");
+      }
+      if (links.bsSection !== "None") {
+        errors.push("Balance Sheet head must be None for P&L accounts.");
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -89,8 +175,6 @@ export async function listAccounts(
   if (query.active === "active") where.isActive = true;
   if (query.active === "inactive") where.isActive = false;
 
-  // Search code/name with word-aware matching so "Rent" does not match
-  // groups like "Current Assets" (substring "rent" inside "Current").
   let searchIds: bigint[] | null = null;
   if (query.search?.trim()) {
     const search = query.search.trim();
@@ -105,6 +189,9 @@ export async function listAccounts(
           code ILIKE ${`%${search}%`}
           OR name ~* ${wordPattern}
           OR account_group ~* ${wordPattern}
+          OR bs_section ~* ${wordPattern}
+          OR pl_section ~* ${wordPattern}
+          OR cf_link ~* ${wordPattern}
         )
     `;
     searchIds = matched.map((row) => row.id);
@@ -114,7 +201,6 @@ export async function listAccounts(
   const rows = await prisma.account.findMany({
     where,
     include: { _count: { select: { voucherLines: true } } },
-    // Code-wise order (1→9 / 1001→8002). Groups follow first appearance in that order.
     orderBy: { code: "asc" },
   });
 
@@ -128,7 +214,6 @@ export async function listAccounts(
     groupMap.set(key, list);
   }
 
-  // Preserve Map insertion order so sections appear in code sequence, not A→Z by group name.
   const groups = Array.from(groupMap.entries()).map(([group, items]) => ({
     group,
     accounts: items,
@@ -151,6 +236,7 @@ export async function createAccount(input: AccountInput): Promise<AccountDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
   const code = input.code.trim();
+  const links = resolveReportLinks(input);
 
   const existing = await prisma.account.findUnique({
     where: { companyId_code: { companyId, code } },
@@ -166,7 +252,10 @@ export async function createAccount(input: AccountInput): Promise<AccountDTO> {
         code,
         name: input.name.trim(),
         accountType: input.accountType,
-        accountGroup: input.accountGroup?.trim() || null,
+        accountGroup: links.accountGroup,
+        bsSection: links.bsSection,
+        plSection: links.plSection,
+        cfLink: links.cfLink,
         normalBalance: input.normalBalance as NormalBalance,
         isActive: input.isActive ?? true,
       },
@@ -184,6 +273,10 @@ export async function createAccount(input: AccountInput): Promise<AccountDTO> {
           code: account.code,
           name: account.name,
           accountType: account.accountType,
+          accountGroup: account.accountGroup,
+          bsSection: account.bsSection,
+          plSection: account.plSection,
+          cfLink: account.cfLink,
           isActive: account.isActive,
         },
       },
@@ -202,6 +295,7 @@ export async function updateAccount(
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
   const accountId = BigInt(id);
+  const links = resolveReportLinks(input);
 
   const updated = await prisma.$transaction(async (tx) => {
     const before = await tx.account.findFirst({
@@ -212,7 +306,6 @@ export async function updateAccount(
       throw new Error("Account not found.");
     }
 
-    // Code is immutable once created to protect voucher line references.
     if (input.code.trim() !== before.code) {
       throw new Error("Account code cannot be changed after creation.");
     }
@@ -222,7 +315,10 @@ export async function updateAccount(
       data: {
         name: input.name.trim(),
         accountType: input.accountType,
-        accountGroup: input.accountGroup?.trim() || null,
+        accountGroup: links.accountGroup,
+        bsSection: links.bsSection,
+        plSection: links.plSection,
+        cfLink: links.cfLink,
         normalBalance: input.normalBalance as NormalBalance,
         isActive: input.isActive ?? before.isActive,
       },
@@ -247,6 +343,9 @@ export async function updateAccount(
           name: before.name,
           accountType: before.accountType,
           accountGroup: before.accountGroup,
+          bsSection: before.bsSection,
+          plSection: before.plSection,
+          cfLink: before.cfLink,
           normalBalance: before.normalBalance,
           isActive: before.isActive,
         },
@@ -254,6 +353,9 @@ export async function updateAccount(
           name: account.name,
           accountType: account.accountType,
           accountGroup: account.accountGroup,
+          bsSection: account.bsSection,
+          plSection: account.plSection,
+          cfLink: account.cfLink,
           normalBalance: account.normalBalance,
           isActive: account.isActive,
         },
@@ -279,7 +381,10 @@ export async function setAccountActive(
     code: existing.code,
     name: existing.name,
     accountType: existing.accountType,
-    accountGroup: existing.accountGroup,
+    accountGroup: existing.accountGroup as AccountGroup | null,
+    bsSection: existing.bsSection,
+    plSection: existing.plSection,
+    cfLink: existing.cfLink,
     normalBalance: existing.normalBalance,
     isActive,
   });

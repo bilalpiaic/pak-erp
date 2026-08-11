@@ -23,7 +23,7 @@ export default async function AccountsPage() {
   return (
     <PageShell
       title="Chart of Accounts"
-      description="Maintain account codes, types, groups, and active status. Grouped hierarchy is derived from account groups."
+      description="Maintain account codes under BS/P&L COA groups, with Balance Sheet, Profit & Loss, and Cash Flow statement links."
     >
       <ChartOfAccounts
         initialAccounts={accounts}

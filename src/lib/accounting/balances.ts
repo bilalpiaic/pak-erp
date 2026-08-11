@@ -10,6 +10,9 @@ export type AccountMeta = {
   name: string;
   accountType: string;
   accountGroup: string | null;
+  bsSection: string;
+  plSection: string;
+  cfLink: string;
   normalBalance: "Debit" | "Credit";
   isActive: boolean;
 };
@@ -39,6 +42,9 @@ export async function listAccountMeta(): Promise<AccountMeta[]> {
     name: account.name,
     accountType: account.accountType,
     accountGroup: account.accountGroup,
+    bsSection: account.bsSection,
+    plSection: account.plSection,
+    cfLink: account.cfLink,
     normalBalance: account.normalBalance,
     isActive: account.isActive,
   }));

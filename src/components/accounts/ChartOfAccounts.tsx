@@ -10,7 +10,22 @@ import {
   type AccountDTO,
   type AccountGroupSection,
 } from "@/lib/accounts/types";
+import {
+  BS_SECTION_LABELS,
+  CF_LINK_LABELS,
+  PL_SECTION_LABELS,
+  type BsSection,
+  type CfLink,
+  type PlSection,
+} from "@/lib/accounts/report-links";
 import { accountLedgerHref } from "@/lib/links";
+
+function shortLink(value: string, kind: "bs" | "pl" | "cf"): string {
+  if (!value || value === "None") return "—";
+  if (kind === "bs") return BS_SECTION_LABELS[value as BsSection] ?? value;
+  if (kind === "pl") return PL_SECTION_LABELS[value as PlSection] ?? value;
+  return CF_LINK_LABELS[value as CfLink] ?? value;
+}
 
 const TYPE_COLORS: Record<string, string> = {
   Asset: "#3b82f6",
@@ -212,14 +227,16 @@ export function ChartOfAccounts({
       </div>
 
       <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
-        <table className="data-table w-full min-w-[720px] border-collapse text-left">
+        <table className="data-table w-full min-w-[980px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Code</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Account Name</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Group</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Type</th>
-              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Normal Bal</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">BS head</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">P&amp;L head</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">CF link</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Status</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Actions</th>
             </tr>
@@ -227,7 +244,7 @@ export function ChartOfAccounts({
           <tbody>
             {groups.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-sm text-[var(--muted)]">
+                <td colSpan={9} className="px-3 py-8 text-center text-sm text-[var(--muted)]">
                   No accounts match the current filters.
                 </td>
               </tr>
@@ -249,10 +266,10 @@ export function ChartOfAccounts({
       </div>
 
       <p className="text-xs text-[var(--muted-strong)]">
-        Accounts are listed code-wise (1→9) and grouped for hierarchy. Codes are immutable
-        after creation; deactivate instead of deleting when transactions exist (
-        {accounts.filter((a) => a.hasTransactions).length} accounts currently have posted
-        lines).
+        Accounts are listed code-wise (1→9) under COA groups. Each account must link to a Balance
+        Sheet or P&amp;L head (and optionally Cash Flow) so new heads appear on statements. Codes are
+        immutable after creation; deactivate instead of deleting when transactions exist (
+        {accounts.filter((a) => a.hasTransactions).length} accounts currently have posted lines).
       </p>
 
       {modal ? (
@@ -292,7 +309,7 @@ function GroupRows({
     <>
       <tr className="bg-[#0f1a30]">
         <td
-          colSpan={7}
+          colSpan={9}
           className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]"
         >
           {section.group}
@@ -324,7 +341,15 @@ function GroupRows({
               {account.accountType}
             </span>
           </td>
-          <td className="px-3 py-2 text-xs text-[var(--muted)]">{account.normalBalance}</td>
+          <td className="max-w-[140px] truncate px-3 py-2 text-[11px] text-[var(--muted)]" title={shortLink(account.bsSection, "bs")}>
+            {shortLink(account.bsSection, "bs")}
+          </td>
+          <td className="max-w-[140px] truncate px-3 py-2 text-[11px] text-[var(--muted)]" title={shortLink(account.plSection, "pl")}>
+            {shortLink(account.plSection, "pl")}
+          </td>
+          <td className="max-w-[160px] truncate px-3 py-2 text-[11px] text-[var(--muted)]" title={shortLink(account.cfLink, "cf")}>
+            {shortLink(account.cfLink, "cf")}
+          </td>
           <td className="px-3 py-2">
             <span
               className="inline-block px-2 py-0.5 text-[10px] font-semibold"

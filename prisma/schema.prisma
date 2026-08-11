@@ -117,6 +117,12 @@ model Account {
   name          String        @db.VarChar(200)
   accountType   String        @map("account_type") @db.VarChar(30)
   accountGroup  String?       @map("account_group") @db.VarChar(100)
+  /// Balance Sheet sub-head link (None for pure P&L accounts)
+  bsSection     String        @default("None") @map("bs_section") @db.VarChar(40)
+  /// Profit & Loss sub-head link (None for pure BS accounts)
+  plSection     String        @default("None") @map("pl_section") @db.VarChar(40)
+  /// Cash Flow statement link (activity + role)
+  cfLink        String        @default("None") @map("cf_link") @db.VarChar(40)
   normalBalance NormalBalance @map("normal_balance")
   isActive      Boolean       @default(true) @map("is_active")
   createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -127,6 +133,9 @@ model Account {
 
   @@unique([companyId, code])
   @@index([companyId])
+  @@index([companyId, bsSection])
+  @@index([companyId, plSection])
+  @@index([companyId, cfLink])
   @@map("accounts")
 }
 
