@@ -20,7 +20,7 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 ### Phase 2 — Database
 
 - Prisma migration for companies, fiscal years, accounts, vouchers, voucher lines, audit logs
-- Seed data: company, FY, chart of accounts, parties (no demo vouchers — blank voucher ledger)
+- Seed data: minimal company + FY + chart of accounts only (no parties / vouchers / demo transactions)
 - Company Settings UI reads/writes PostgreSQL
 - `/api/company` and `/api/health`
 
