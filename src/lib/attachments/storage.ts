@@ -106,7 +106,7 @@ export async function storeAttachment(
   const diskPath = path.join(dir, diskName);
   await writeFile(diskPath, buffer);
   const storageKey = `local:vouchers/${voucherId}/${diskName}`;
-  const storageUrl = `/api/uploads/${encodeURIComponent(`vouchers/${voucherId}/${diskName}`)}`;
+  const storageUrl = `/api/uploads/vouchers/${voucherId}/${encodeURIComponent(diskName)}`;
 
   return {
     storageKey,
