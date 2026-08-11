@@ -151,12 +151,30 @@ model Voucher {
   company Company       @relation(fields: [companyId], references: [id])
   party   Party?        @relation(fields: [partyId], references: [id])
   lines   VoucherLine[]
+  attachments VoucherAttachment[]
 
   @@unique([companyId, voucherNo])
   @@index([companyId, voucherDate])
   @@index([companyId, status])
   @@index([partyId])
   @@map("vouchers")
+}
+
+model VoucherAttachment {
+  id           BigInt   @id @default(autoincrement())
+  voucherId    BigInt   @map("voucher_id")
+  fileName     String   @map("file_name") @db.VarChar(255)
+  mimeType     String   @map("mime_type") @db.VarChar(120)
+  sizeBytes    Int      @map("size_bytes")
+  storageKey   String   @map("storage_key") @db.VarChar(500)
+  storageUrl   String   @map("storage_url") @db.Text
+  uploadedBy   String?  @map("uploaded_by") @db.VarChar(100)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  @@index([voucherId])
+  @@map("voucher_attachments")
 }
 
 model VoucherLine {

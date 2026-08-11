@@ -39,6 +39,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local file uploads (when BLOB_READ_WRITE_TOKEN is unset)
+.data/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -140,7 +140,17 @@ export function VoucherEntry({
               ? `Posted ${voucher.voucherNo}`
               : `Draft saved ${voucher.voucherNo}`,
           );
-          setView({ kind: "list" });
+          if (voucher.status === "DRAFT") {
+            setView({
+              kind: "form",
+              mode: "edit",
+              voucherType: voucher.voucherType,
+              voucherNo: voucher.voucherNo,
+              voucher,
+            });
+          } else {
+            setView({ kind: "list" });
+          }
           refresh();
         }}
       />

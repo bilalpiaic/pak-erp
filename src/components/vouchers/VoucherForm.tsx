@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { VoucherAttachmentsPanel } from "@/components/vouchers/VoucherAttachmentsPanel";
 import { centsToDecimalString, isBalanced, sumCents, toCents } from "@/lib/accounting/money";
 import type { AccountDTO } from "@/lib/accounts/types";
 import { formatCurrency } from "@/lib/formatting/money";
@@ -78,6 +79,7 @@ export function VoucherForm({
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [savedVoucher, setSavedVoucher] = useState<VoucherDTO | null>(initial ?? null);
 
   const totalDebitCents = sumCents(lines.map((l) => l.debit));
   const totalCreditCents = sumCents(lines.map((l) => l.credit));
@@ -141,8 +143,9 @@ export function VoucherForm({
       }
 
       let voucher: VoucherDTO | undefined;
+      const existingId = savedVoucher?.id ?? initial?.id;
 
-      if (mode === "create") {
+      if (!existingId) {
         const response = await fetch("/api/vouchers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -154,8 +157,8 @@ export function VoucherForm({
           return;
         }
         voucher = data.voucher;
-      } else if (initial) {
-        const patchResponse = await fetch(`/api/vouchers/${initial.id}`, {
+      } else {
+        const patchResponse = await fetch(`/api/vouchers/${existingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -171,7 +174,7 @@ export function VoucherForm({
         voucher = patchData.voucher;
 
         if (action === "post") {
-          const postResponse = await fetch(`/api/vouchers/${initial.id}/post`, {
+          const postResponse = await fetch(`/api/vouchers/${existingId}/post`, {
             method: "POST",
           });
           const postData = (await postResponse.json()) as {
@@ -186,7 +189,10 @@ export function VoucherForm({
         }
       }
 
-      if (voucher) onSaved(voucher);
+      if (voucher) {
+        setSavedVoucher(voucher);
+        onSaved(voucher);
+      }
     } catch {
       setError("Unable to reach the server.");
     } finally {
@@ -435,6 +441,15 @@ export function VoucherForm({
           {error}
         </p>
       ) : null}
+
+      <VoucherAttachmentsPanel
+        voucherId={savedVoucher?.id ?? initial?.id ?? null}
+        status={savedVoucher?.status ?? initial?.status ?? "DRAFT"}
+        initialAttachments={savedVoucher?.attachments ?? initial?.attachments ?? []}
+        readOnly={
+          (savedVoucher?.status ?? initial?.status) === "CANCELLED" || mode === "view"
+        }
+      />
 
       {!readOnly ? (
         <div className="flex flex-wrap items-center gap-2">
