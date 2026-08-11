@@ -3,8 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { useFiscalYear } from "@/components/fiscal-year/FiscalYearProvider";
 import { OriginLink } from "@/components/ui/OriginLink";
-import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { PartyDTO } from "@/lib/parties/types";
 import type {
@@ -34,6 +34,7 @@ export function PartyLedgerView({
   initial = null,
   loadError = null,
 }: PartyLedgerViewProps) {
+  const { activeRange } = useFiscalYear();
   const activeParties = useMemo(
     () => parties.filter((p) => p.isActive).sort((a, b) => a.name.localeCompare(b.name)),
     [parties],
@@ -46,8 +47,8 @@ export function PartyLedgerView({
   const [kind, setKind] = useState<PartyLedgerKind>(
     initialKind ?? initial?.kind ?? defaultKindForParty(selectedParty),
   );
-  const [from, setFrom] = useState(initial?.from ?? DEFAULT_FY_START);
-  const [to, setTo] = useState(initial?.to ?? todayIso());
+  const [from, setFrom] = useState(initial?.from ?? activeRange.from);
+  const [to, setTo] = useState(initial?.to ?? activeRange.to);
   const [data, setData] = useState<PartyLedgerResult | null>(initial);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();

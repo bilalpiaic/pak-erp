@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { FiscalYearSelector } from "@/components/fiscal-year/FiscalYearSelector";
 import { NAV_SECTIONS } from "@/lib/navigation";
 
 type SidebarProps = {
   companyName?: string;
   ntn?: string | null;
   strn?: string | null;
+  currency?: string;
   onNavigate?: () => void;
   className?: string;
 };
@@ -17,6 +19,7 @@ export function Sidebar({
   companyName = "GarmentLoop ERP",
   ntn,
   strn,
+  currency = "PKR",
   onNavigate,
   className = "",
 }: SidebarProps) {
@@ -66,8 +69,9 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="border-t border-[var(--border)] px-3.5 py-2.5 text-[10px] text-[var(--muted-strong)]">
-        FY Jul–Jun · PKR ₨
+      <div className="space-y-2 border-t border-[var(--border)] px-3.5 py-2.5">
+        <FiscalYearSelector />
+        <div className="text-[10px] text-[var(--muted-strong)]">{currency} ₨</div>
       </div>
     </aside>
   );

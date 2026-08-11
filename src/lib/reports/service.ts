@@ -8,16 +8,12 @@ import {
   type AccountMeta,
   type DrCrCents,
 } from "@/lib/accounting/balances";
-import {
-  daysBetween,
-  DEFAULT_FY_START,
-  parseIsoDate,
-  todayIso,
-} from "@/lib/accounting/dates";
+import { daysBetween, parseIsoDate } from "@/lib/accounting/dates";
 import { toCents } from "@/lib/accounting/money";
 import { getPrimaryCompanyWithFiscalYear } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
+import { getActiveDateRange } from "@/lib/fiscal-years/service";
 
 export const REPORT_TYPES = [
   "trial-balance",
@@ -67,8 +63,9 @@ async function buildContext(query: ReportQuery): Promise<ReportContext> {
   const company = await getPrimaryCompanyWithFiscalYear();
   if (!company) throw new Error("No company found. Create a company in Settings first.");
 
-  const from = query.from ?? company.fiscalYear?.startDate ?? DEFAULT_FY_START;
-  const to = query.to ?? todayIso();
+  const activeRange = await getActiveDateRange();
+  const from = query.from ?? activeRange.from;
+  const to = query.to ?? activeRange.to;
   if (!parseIsoDate(from) || !parseIsoDate(to)) {
     throw new Error("Invalid date range. Use YYYY-MM-DD.");
   }
@@ -85,7 +82,7 @@ async function buildContext(query: ReportQuery): Promise<ReportContext> {
     from,
     to,
     companyName: company.company.name,
-    fiscalYearName: company.fiscalYear?.name ?? null,
+    fiscalYearName: activeRange.fiscalYear?.name ?? company.fiscalYear?.name ?? null,
     accounts,
     balTo,
     period,

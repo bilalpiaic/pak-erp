@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { useFiscalYear } from "@/components/fiscal-year/FiscalYearProvider";
 import { OriginLink } from "@/components/ui/OriginLink";
-import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import { formatCurrency } from "@/lib/formatting/money";
 import {
   REPORT_LABEL_ACCOUNT_CODES,
@@ -21,8 +21,9 @@ type ReportViewProps = {
 };
 
 export function ReportView({ type, title, initial, loadError = null }: ReportViewProps) {
-  const [from, setFrom] = useState(String(initial?.from ?? DEFAULT_FY_START));
-  const [to, setTo] = useState(String(initial?.to ?? todayIso()));
+  const { activeRange } = useFiscalYear();
+  const [from, setFrom] = useState(String(initial?.from ?? activeRange.from));
+  const [to, setTo] = useState(String(initial?.to ?? activeRange.to));
   const [data, setData] = useState<Record<string, unknown> | null>(initial);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();

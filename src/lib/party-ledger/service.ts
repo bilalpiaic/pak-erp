@@ -5,12 +5,13 @@ import {
   listAccountMeta,
   moneyFromCents,
 } from "@/lib/accounting/balances";
-import { DEFAULT_FY_START, parseIsoDate, todayIso } from "@/lib/accounting/dates";
+import { parseIsoDate } from "@/lib/accounting/dates";
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
 import { getPrimaryCompany } from "@/lib/company/service";
 import type { CompanyDTO } from "@/lib/company/types";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
+import { getActiveDateRange } from "@/lib/fiscal-years/service";
 import type { PartyTypeValue } from "@/lib/parties/types";
 import type { VoucherTypeValue } from "@/lib/vouchers/types";
 
@@ -120,8 +121,9 @@ export async function getPartyLedger(
     throw new Error(`Account ${accountCode} not found in chart of accounts.`);
   }
 
-  const fromStr = query.from ?? DEFAULT_FY_START;
-  const toStr = query.to ?? todayIso();
+  const activeRange = await getActiveDateRange();
+  const fromStr = query.from ?? activeRange.from;
+  const toStr = query.to ?? activeRange.to;
   const from = parseIsoDate(fromStr);
   const to = parseIsoDate(toStr);
   if (!from || !to) throw new Error("Invalid date range. Use YYYY-MM-DD.");
