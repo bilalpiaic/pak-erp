@@ -6,7 +6,6 @@ import {
   signedBalanceCents,
   type AccountBalanceMap,
   type AccountMeta,
-  type DrCrCents,
 } from "@/lib/accounting/balances";
 import { daysBetween, parseIsoDate } from "@/lib/accounting/dates";
 import { toCents } from "@/lib/accounting/money";
@@ -41,23 +40,6 @@ type ReportContext = {
   period: AccountBalanceMap;
   prev: AccountBalanceMap;
 };
-
-function nb(map: AccountBalanceMap, accounts: AccountMeta[], code: string): number {
-  const account = accounts.find((a) => a.code === code);
-  const bal = getDrCr(map, code);
-  if (!account) return bal.dr - bal.cr;
-  return signedBalanceCents(bal, account.normalBalance);
-}
-
-function creditNet(map: AccountBalanceMap, code: string): number {
-  const bal = getDrCr(map, code);
-  return Math.max(bal.cr - bal.dr, 0);
-}
-
-function debitNet(map: AccountBalanceMap, code: string): number {
-  const bal = getDrCr(map, code);
-  return Math.max(bal.dr - bal.cr, 0);
-}
 
 async function buildContext(query: ReportQuery): Promise<ReportContext> {
   const company = await getPrimaryCompanyWithFiscalYear();
@@ -165,32 +147,50 @@ export async function getTrialBalance(query: ReportQuery = {}) {
 
 /* ─── Balance Sheet ─── */
 
+function sumBs(
+  map: AccountBalanceMap,
+  accounts: AccountMeta[],
+  section: string,
+  mode: "signed" | "creditNet" | "debitNet" = "signed",
+): number {
+  return accounts
+    .filter((a) => a.bsSection === section)
+    .reduce((sum, account) => {
+      const bal = getDrCr(map, account.code);
+      if (mode === "creditNet") return sum + Math.max(bal.cr - bal.dr, 0);
+      if (mode === "debitNet") return sum + Math.max(bal.dr - bal.cr, 0);
+      return sum + signedBalanceCents(bal, account.normalBalance);
+    }, 0);
+}
+
 export async function getBalanceSheet(query: ReportQuery = {}) {
   const ctx = await buildContext(query);
   const m = ctx.balTo;
   const a = ctx.accounts;
 
-  const cash = nb(m, a, "1001") + nb(m, a, "1002") + nb(m, a, "1003");
-  const debtors = nb(m, a, "1010");
-  const stock = nb(m, a, "1020");
-  const advPre = nb(m, a, "1030") + nb(m, a, "1040") + nb(m, a, "1050");
-  const fa =
-    nb(m, a, "1201") + nb(m, a, "1202") + nb(m, a, "1203") + nb(m, a, "1204");
-  const accDep = creditNet(m, "1205");
+  const cash = sumBs(m, a, "CashAndBank");
+  const debtors = sumBs(m, a, "TradeDebtors");
+  const stock = sumBs(m, a, "Stock");
+  const advPre =
+    sumBs(m, a, "AdvancesPrepayments") + sumBs(m, a, "OtherCurrentAssets");
+  const fa = sumBs(m, a, "FixedAssetsGross") + sumBs(m, a, "OtherNonCurrentAssets");
+  const accDep = sumBs(m, a, "AccumulatedDepreciation", "creditNet");
   const netFA = fa - accDep;
   const currAssets = cash + debtors + stock + advPre;
   const totalAssets = netFA + currAssets;
 
-  const creditors = creditNet(m, "2001");
-  const accruals = creditNet(m, "2002");
-  const staxP = creditNet(m, "2003");
-  const itaxP = creditNet(m, "2004");
-  const whtP = creditNet(m, "2005");
-  const stLoans = creditNet(m, "2006");
-  const ltLoan = creditNet(m, "2201");
-  const capital = creditNet(m, "3001");
-  const retOB = creditNet(m, "3002");
-  const drawings = debitNet(m, "3003");
+  const creditors = sumBs(m, a, "TradeCreditors", "creditNet");
+  const accruals = sumBs(m, a, "AccruedLiabilities", "creditNet");
+  const taxes =
+    sumBs(m, a, "TaxesPayable", "creditNet") +
+    sumBs(m, a, "OtherCurrentLiabilities", "creditNet");
+  const stLoans = sumBs(m, a, "ShortTermLoans", "creditNet");
+  const ltLoan =
+    sumBs(m, a, "LongTermFinancing", "creditNet") +
+    sumBs(m, a, "OtherLongTermLiabilities", "creditNet");
+  const capital = sumBs(m, a, "OwnersCapital", "creditNet");
+  const retOB = sumBs(m, a, "RetainedEarnings", "creditNet");
+  const drawings = sumBs(m, a, "Drawings", "debitNet");
 
   const revT = a
     .filter((x) => x.accountType === "Revenue")
@@ -207,7 +207,7 @@ export async function getBalanceSheet(query: ReportQuery = {}) {
   const netProfit = revT - expT;
   const retained = retOB + netProfit - drawings;
   const totalEquity = capital + retained;
-  const currLiab = creditors + accruals + staxP + itaxP + whtP + stLoans;
+  const currLiab = creditors + accruals + taxes + stLoans;
   const totalLiabEq = totalEquity + ltLoan + currLiab;
 
   const line = (label: string, cents: number, opts?: { bold?: boolean; indent?: boolean }) => ({
@@ -238,7 +238,7 @@ export async function getBalanceSheet(query: ReportQuery = {}) {
       longTerm: line("Long-term Financing", ltLoan, { indent: true }),
       creditors: line("Trade Creditors", creditors, { indent: true }),
       accruals: line("Accrued Liabilities", accruals, { indent: true }),
-      taxes: line("Taxes & WHT Payable", staxP + itaxP + whtP, { indent: true }),
+      taxes: line("Taxes & WHT Payable", taxes, { indent: true }),
       shortLoans: line("Short-term Loans", stLoans, { indent: true }),
       currentTotal: line("Total Current Liabilities", currLiab, { bold: true }),
       total: line("TOTAL EQUITY & LIABILITIES", totalLiabEq, { bold: true }),
@@ -253,44 +253,67 @@ export async function getBalanceSheet(query: ReportQuery = {}) {
 
 /* ─── Profit & Loss ─── */
 
-function pBal(map: AccountBalanceMap, code: string): DrCrCents {
-  return getDrCr(map, code);
+function sumPlPeriod(
+  map: AccountBalanceMap,
+  accounts: AccountMeta[],
+  section: string,
+  mode: "creditNet" | "debitNet" = "debitNet",
+): number {
+  return accounts
+    .filter((a) => a.plSection === section)
+    .reduce((sum, account) => {
+      const bal = getDrCr(map, account.code);
+      if (mode === "creditNet") return sum + (bal.cr - bal.dr);
+      return sum + (bal.dr - bal.cr);
+    }, 0);
+}
+
+function plDetailLines(
+  map: AccountBalanceMap,
+  accounts: AccountMeta[],
+  section: string,
+): Array<{ label: string; cents: number }> {
+  return accounts
+    .filter((a) => a.plSection === section)
+    .map((account) => {
+      const bal = getDrCr(map, account.code);
+      const cents =
+        account.normalBalance === "Credit" ? bal.cr - bal.dr : bal.dr - bal.cr;
+      return { label: account.name, cents };
+    })
+    .filter((row) => row.cents !== 0);
 }
 
 export async function getProfitLoss(query: ReportQuery = {}) {
   const ctx = await buildContext(query);
   const p = ctx.period;
+  const a = ctx.accounts;
 
-  const salesTax = pBal(p, "4001");
-  const salesEx = pBal(p, "4002");
-  const otherInc = pBal(p, "4003");
-  const grossRev = salesTax.cr - salesTax.dr + (salesEx.cr - salesEx.dr);
-
-  const openStk = pBal(p, "5001");
-  const purchases = pBal(p, "5002");
-  const closeStk = pBal(p, "5003");
-  const openAmt = openStk.dr - openStk.cr;
-  const purchAmt = purchases.dr - purchases.cr;
-  const closeAmt = closeStk.cr - closeStk.dr;
-  const cogs = Math.max(openAmt, 0) + Math.max(purchAmt, 0) - Math.max(closeAmt, 0);
+  const grossRev = sumPlPeriod(p, a, "Sales", "creditNet");
+  const openAmt = Math.max(sumPlPeriod(p, a, "OpeningStock"), 0);
+  const purchAmt = Math.max(sumPlPeriod(p, a, "Purchases"), 0);
+  const closeAmt = Math.max(sumPlPeriod(p, a, "ClosingStock", "creditNet"), 0);
+  const cogs = openAmt + purchAmt - closeAmt;
   const grossProfit = grossRev - cogs;
 
-  const salAmt = pBal(p, "6001").dr - pBal(p, "6001").cr;
-  const rentAmt = pBal(p, "6002").dr - pBal(p, "6002").cr;
-  const utilAmt = pBal(p, "6003").dr - pBal(p, "6003").cr;
-  const transAmt = pBal(p, "6004").dr - pBal(p, "6004").cr;
-  const adminAmt = pBal(p, "6005").dr - pBal(p, "6005").cr;
-  const sellAmt = pBal(p, "6006").dr - pBal(p, "6006").cr;
-  const depAmt = pBal(p, "6007").dr - pBal(p, "6007").cr;
-  const totalOpex = salAmt + rentAmt + utilAmt + transAmt + adminAmt + sellAmt + depAmt;
+  const opexDetails = plDetailLines(p, a, "OperatingExpense");
+  const depDetails = plDetailLines(p, a, "Depreciation");
+  const otherExpDetails = plDetailLines(p, a, "OtherExpense");
+  const opexRows = [...opexDetails, ...depDetails, ...otherExpDetails];
+  const totalOpex = opexRows.reduce((s, r) => s + r.cents, 0);
   const ebit = grossProfit - totalOpex;
-  const oInc = otherInc.cr - otherInc.dr;
-  const finChg = debitNet(p, "7001") + debitNet(p, "7002");
+
+  const oInc = sumPlPeriod(p, a, "OtherIncome", "creditNet");
+  const finChg = Math.max(sumPlPeriod(p, a, "FinancialCharges"), 0);
   const pbt = ebit + oInc - finChg;
-  const taxAmt = debitNet(p, "8001");
+  const taxAmt = Math.max(sumPlPeriod(p, a, "IncomeTax"), 0);
   const pat = pbt - taxAmt;
 
-  const row = (label: string, cents: number, opts?: { bold?: boolean; indent?: boolean; header?: boolean }) => ({
+  const row = (
+    label: string,
+    cents: number,
+    opts?: { bold?: boolean; indent?: boolean; header?: boolean },
+  ) => ({
     label,
     amount: opts?.header ? null : moneyFromCents(cents),
     amountCents: opts?.header ? null : cents,
@@ -310,13 +333,7 @@ export async function getProfitLoss(query: ReportQuery = {}) {
       row("Total Cost of Goods Sold", cogs, { bold: true }),
       row("GROSS PROFIT", grossProfit, { bold: true }),
       row("Operating Expenses", 0, { header: true }),
-      row("Salaries & Wages", salAmt, { indent: true }),
-      row("Rent Expense", rentAmt, { indent: true }),
-      row("Utility Bills", utilAmt, { indent: true }),
-      row("Transport", transAmt, { indent: true }),
-      row("Administrative Expenses", adminAmt, { indent: true }),
-      row("Selling & Distribution", sellAmt, { indent: true }),
-      row("Depreciation", depAmt, { indent: true }),
+      ...opexRows.map((item) => row(item.label, item.cents, { indent: true })),
       row("Total Operating Expenses", totalOpex, { bold: true }),
       row("OPERATING PROFIT (EBIT)", ebit, { bold: true }),
       row("Add: Other Income", oInc, { indent: true }),
@@ -338,48 +355,76 @@ export async function getProfitLoss(query: ReportQuery = {}) {
 
 /* ─── Cash Flow ─── */
 
+function sumCfMovement(
+  map: AccountBalanceMap,
+  accounts: AccountMeta[],
+  cfLink: string,
+  side: "creditNet" | "debitNet",
+): number {
+  return accounts
+    .filter((a) => a.cfLink === cfLink)
+    .reduce((sum, account) => {
+      const bal = getDrCr(map, account.code);
+      if (side === "creditNet") return sum + Math.max(bal.cr - bal.dr, 0);
+      return sum + Math.max(bal.dr - bal.cr, 0);
+    }, 0);
+}
+
+function sumCfSigned(
+  map: AccountBalanceMap,
+  accounts: AccountMeta[],
+  cfLink: string,
+): number {
+  return accounts
+    .filter((a) => a.cfLink === cfLink)
+    .reduce((sum, account) => {
+      const bal = getDrCr(map, account.code);
+      return sum + (bal.dr - bal.cr);
+    }, 0);
+}
+
 export async function getCashFlow(query: ReportQuery = {}) {
   const ctx = await buildContext(query);
   const p = ctx.period;
   const pp = ctx.prev;
+  const a = ctx.accounts;
 
-  const depAmt = pBal(p, "6007").dr - pBal(p, "6007").cr;
-  const grossRev =
-    pBal(p, "4001").cr -
-    pBal(p, "4001").dr +
-    (pBal(p, "4002").cr - pBal(p, "4002").dr) +
-    (pBal(p, "4003").cr - pBal(p, "4003").dr);
+  const grossRev = sumCfMovement(p, a, "OperatingReceipt", "creditNet");
+  const opExpPaid = sumCfMovement(p, a, "OperatingPayment", "debitNet");
+  const depAmt = sumCfMovement(p, a, "NonCashAddBack", "debitNet");
+  const incomeTaxPaid = a
+    .filter((x) => x.cfLink === "OperatingPayment" && x.plSection === "IncomeTax")
+    .reduce((s, x) => s + Math.max(getDrCr(p, x.code).dr - getDrCr(p, x.code).cr, 0), 0);
+  const opPaidExTax = opExpPaid - incomeTaxPaid;
+  const netOp = grossRev - opPaidExTax + depAmt - incomeTaxPaid;
 
-  const opExpPaid =
-    debitNet(p, "5002") +
-    debitNet(p, "6001") +
-    debitNet(p, "6002") +
-    debitNet(p, "6003") +
-    debitNet(p, "6004") +
-    debitNet(p, "6005") +
-    debitNet(p, "6006");
-  const taxPaid = debitNet(p, "8001");
-  const netOp = grossRev - opExpPaid + depAmt - taxPaid;
-
-  const faAdds = debitNet(p, "1201") + debitNet(p, "1202");
-  const faDisp = creditNet(p, "1201") + creditNet(p, "1202");
+  const faAdds =
+    sumCfMovement(p, a, "InvestingPurchase", "debitNet") +
+    sumCfMovement(p, a, "InvestingDisposal", "debitNet");
+  const faDisp =
+    sumCfMovement(p, a, "InvestingPurchase", "creditNet") +
+    sumCfMovement(p, a, "InvestingDisposal", "creditNet");
   const netInv = faDisp - faAdds;
 
-  const ltLoanPrc = creditNet(p, "2201");
-  const ltLoanRep = debitNet(p, "2201");
-  const capIntro = creditNet(p, "3001");
-  const drawings = debitNet(p, "3003");
+  const ltLoanPrc =
+    sumCfMovement(p, a, "FinancingBorrowing", "creditNet") +
+    sumCfMovement(p, a, "FinancingRepayment", "creditNet");
+  const ltLoanRep =
+    sumCfMovement(p, a, "FinancingBorrowing", "debitNet") +
+    sumCfMovement(p, a, "FinancingRepayment", "debitNet");
+  const capIntro = sumCfMovement(p, a, "FinancingCapital", "creditNet");
+  const drawings = sumCfMovement(p, a, "FinancingDrawings", "debitNet");
   const netFin = ltLoanPrc - ltLoanRep + capIntro - drawings;
   const netChg = netOp + netInv + netFin;
 
-  const openCash =
-    pBal(pp, "1001").dr -
-    pBal(pp, "1001").cr +
-    (pBal(pp, "1002").dr - pBal(pp, "1002").cr) +
-    (pBal(pp, "1003").dr - pBal(pp, "1003").cr);
+  const openCash = sumCfSigned(pp, a, "CashEquivalent");
   const closeCash = openCash + netChg;
 
-  const row = (label: string, cents: number, opts?: { bold?: boolean; indent?: boolean; header?: boolean }) => ({
+  const row = (
+    label: string,
+    cents: number,
+    opts?: { bold?: boolean; indent?: boolean; header?: boolean },
+  ) => ({
     label,
     amount: opts?.header ? null : moneyFromCents(cents),
     amountCents: opts?.header ? null : cents,
@@ -393,17 +438,17 @@ export async function getCashFlow(query: ReportQuery = {}) {
     lines: [
       row("A. Cash Flows from Operating Activities", 0, { header: true }),
       row("Cash receipts from customers & revenue", grossRev, { indent: true }),
-      row("Cash paid to suppliers & employees", -opExpPaid, { indent: true }),
+      row("Cash paid to suppliers & employees", -opPaidExTax, { indent: true }),
       row("Add back: Depreciation (non-cash)", depAmt, { indent: true }),
-      row("Income tax paid", -taxPaid, { indent: true }),
+      row("Income tax paid", -incomeTaxPaid, { indent: true }),
       row("Net Cash from Operating Activities", netOp, { bold: true }),
       row("B. Cash Flows from Investing Activities", 0, { header: true }),
       row("Purchase of fixed assets", -faAdds, { indent: true }),
       row("Proceeds from disposal of assets", faDisp, { indent: true }),
       row("Net Cash from Investing Activities", netInv, { bold: true }),
       row("C. Cash Flows from Financing Activities", 0, { header: true }),
-      row("Proceeds from long-term financing", ltLoanPrc, { indent: true }),
-      row("Repayment of long-term financing", -ltLoanRep, { indent: true }),
+      row("Proceeds from financing / loans", ltLoanPrc, { indent: true }),
+      row("Repayment of financing / loans", -ltLoanRep, { indent: true }),
       row("Capital introduced by owner", capIntro, { indent: true }),
       row("Drawings by owner", -drawings, { indent: true }),
       row("Net Cash from Financing Activities", netFin, { bold: true }),

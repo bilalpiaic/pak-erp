@@ -22,6 +22,12 @@ export const ACCOUNT_GROUPS = [
 
 export type AccountGroup = (typeof ACCOUNT_GROUPS)[number];
 
+export type {
+  BsSection,
+  PlSection,
+  CfLink,
+} from "@/lib/accounts/report-links";
+
 export type AccountDTO = {
   id: string;
   companyId: string;
@@ -29,6 +35,9 @@ export type AccountDTO = {
   name: string;
   accountType: AccountType;
   accountGroup: string | null;
+  bsSection: string;
+  plSection: string;
+  cfLink: string;
   normalBalance: NormalBalanceValue;
   isActive: boolean;
   hasTransactions: boolean;
@@ -41,6 +50,9 @@ export type AccountInput = {
   name: string;
   accountType: AccountType;
   accountGroup?: string | null;
+  bsSection?: string;
+  plSection?: string;
+  cfLink?: string;
   normalBalance: NormalBalanceValue;
   isActive?: boolean;
 };
