@@ -64,6 +64,14 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Resilient Vercel build (`scripts/vercel-build.sh`)
 - Health check reports DB + `AUTH_SECRET` presence
 
+### Phase 9 — Parties & FBR fields
+
+- Parties master (debtors / creditors / both) with NTN, outstanding, WHT status
+- Voucher party picker + NTN / WHT applicable fields
+- Aging reports prefer party master balances
+- `/api/parties`, `/api/parties/:id`
+
+
 The legacy single-file prototype lives in `legacy/index.html`.
 
 ## Getting started
@@ -153,7 +161,7 @@ Never commit real database credentials.
 
 ```text
 Dashboard
-Accounting → Chart of Accounts, Voucher Entry, General Journal, Account Ledger
+Accounting → Chart of Accounts, Parties, Voucher Entry, General Journal, Account Ledger
 Reports → Trial Balance, Balance Sheet, P&L, Cash Flow, Debtors/Creditors Aging
 Administration → Company Settings
 ```

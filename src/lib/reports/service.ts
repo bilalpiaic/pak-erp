@@ -453,6 +453,34 @@ async function deriveAgingParties(
   const company = await getPrimaryCompanyWithFiscalYear();
   if (!company) throw new Error("No company found.");
   const companyId = BigInt(company.company.id);
+
+  // Prefer party master outstanding rows (Phase 9).
+  const master = await prisma.party.findMany({
+    where: {
+      companyId,
+      isActive: true,
+      OR:
+        kind === "debtors"
+          ? [{ partyType: "Debtor" }, { partyType: "Both" }]
+          : [{ partyType: "Creditor" }, { partyType: "Both" }],
+      outstandingAmount: { gt: 0 },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  if (master.length > 0) {
+    return master.map((p) => ({
+      name: p.name,
+      ntn: p.ntn,
+      outstandingDays: p.outstandingDays ?? 0,
+      amountCents: toCents(p.outstandingAmount?.toString() ?? "0") ?? 0,
+      whtStatus:
+        kind === "creditors"
+          ? ((p.whtStatus as "Deducted" | "Pending" | null) ?? "Pending")
+          : null,
+    }));
+  }
+
   const code = kind === "debtors" ? "1010" : "2001";
   const asOfDate = parseIsoDate(asOf);
   if (!asOfDate) throw new Error("Invalid as-of date.");
@@ -489,9 +517,7 @@ async function deriveAgingParties(
     const party = (line.voucher.partyName ?? "Unknown").trim() || "Unknown";
     const debit = toCents(line.debit.toString()) ?? 0;
     const credit = toCents(line.credit.toString()) ?? 0;
-    // Debtors: debit increases receivable; Creditors: credit increases payable
-    const delta =
-      kind === "debtors" ? debit - credit : credit - debit;
+    const delta = kind === "debtors" ? debit - credit : credit - debit;
     const date = line.voucher.voucherDate.toISOString().slice(0, 10);
     const hasWht = line.voucher.lines.some((l) => l.account.code === "2005");
 
@@ -506,28 +532,6 @@ async function deriveAgingParties(
     if (date < current.oldestDate) current.oldestDate = date;
     if (kind === "creditors" && hasWht) current.whtStatus = "Deducted";
     byParty.set(party, current);
-  }
-
-  // Supplement with prototype-style sample parties when AR/AP subledger is thin
-  // (receipts often hit Sales rather than Debtors in the seed set).
-  if (kind === "debtors" && byParty.size <= 1) {
-    const samples: AgingParty[] = [
-      { name: "Karachi Traders", ntn: "2345678-9", outstandingDays: 25, amountCents: 59_000_000 },
-      { name: "Lahore Distributors", ntn: "5678901-2", outstandingDays: 45, amountCents: 35_000_000 },
-      { name: "Multan Traders", ntn: "6789012-3", outstandingDays: 75, amountCents: 82_600_000 },
-      { name: "Rawalpindi Co.", ntn: "8901234-5", outstandingDays: 100, amountCents: 42_000_000 },
-      { name: "Islamabad Stores", ntn: "9012345-6", outstandingDays: 135, amountCents: 28_000_000 },
-    ];
-    return samples;
-  }
-  if (kind === "creditors" && [...byParty.values()].filter((p) => p.amountCents > 0).length < 3) {
-    return [
-      { name: "Pak Steel Ltd", ntn: "3456789-0", outstandingDays: 20, amountCents: 78_400_000, whtStatus: "Deducted" },
-      { name: "Al-Noor Properties", ntn: "4567890-1", outstandingDays: 10, amountCents: 10_800_000, whtStatus: "Deducted" },
-      { name: "Faisalabad Mills", ntn: "7890123-4", outstandingDays: 40, amountCents: 58_800_000, whtStatus: "Deducted" },
-      { name: "Sukkur Suppliers", ntn: "0123456-7", outstandingDays: 65, amountCents: 32_000_000, whtStatus: "Pending" },
-      { name: "Sialkot Exports", ntn: "1234567-1", outstandingDays: 90, amountCents: 17_500_000, whtStatus: "Pending" },
-    ];
   }
 
   return [...byParty.values()]

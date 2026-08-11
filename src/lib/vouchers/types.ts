@@ -23,7 +23,10 @@ export type VoucherInput = {
   voucherType: VoucherTypeValue;
   voucherDate: string; // YYYY-MM-DD
   referenceNo?: string | null;
+  partyId?: string | null;
   partyName?: string | null;
+  partyNtn?: string | null;
+  whtApplicable?: boolean;
   narration?: string | null;
   lines: VoucherLineInput[];
 };
@@ -45,7 +48,10 @@ export type VoucherDTO = {
   voucherType: VoucherTypeValue;
   voucherDate: string;
   referenceNo: string | null;
+  partyId: string | null;
   partyName: string | null;
+  partyNtn: string | null;
+  whtApplicable: boolean;
   narration: string | null;
   status: VoucherStatusValue;
   totalDebit: string;

@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { VoucherForm } from "@/components/vouchers/VoucherForm";
 import type { AccountDTO } from "@/lib/accounts/types";
 import { formatCurrency } from "@/lib/formatting/money";
+import type { PartyDTO } from "@/lib/parties/types";
 import {
   VOUCHER_TYPES,
   type VoucherDTO,
@@ -14,6 +15,7 @@ import {
 type VoucherEntryProps = {
   initialVouchers: VoucherDTO[];
   accounts: AccountDTO[];
+  parties?: PartyDTO[];
   loadError?: string | null;
 };
 
@@ -36,6 +38,7 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 export function VoucherEntry({
   initialVouchers,
   accounts,
+  parties = [],
   loadError = null,
 }: VoucherEntryProps) {
   const [vouchers, setVouchers] = useState(initialVouchers);
@@ -129,6 +132,7 @@ export function VoucherEntry({
         voucherNo={view.voucherNo}
         initial={view.voucher}
         accounts={accounts}
+        parties={parties}
         onBack={() => setView({ kind: "list" })}
         onSaved={(voucher) => {
           setMessage(
