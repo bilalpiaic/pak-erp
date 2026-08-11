@@ -120,6 +120,7 @@ Set these in [Vercel → pak-erp → Settings → Environment Variables](https:/
 | Name | Notes |
 |---|---|
 | `DATABASE_URL` | Neon **pooled** URL with `sslmode=require` (drop `channel_binding=require` if present) |
+| `DIRECT_URL` | Optional Neon **direct** (non-pooler) URL for migrations; build also auto-strips `-pooler` from `DATABASE_URL` |
 | `AUTH_SECRET` | Long random secret |
 
 After env vars are saved, open the latest deployment → **Redeploy**, or push a new commit. Production URL updates when this branch is merged to `main` (or you promote a production deployment).
