@@ -18,6 +18,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/accounts", label: "Chart of Accounts" },
       { href: "/parties", label: "Parties" },
+      { href: "/party-ledger", label: "Party Ledger" },
       { href: "/sales-invoices", label: "Sales Invoices" },
       { href: "/vouchers", label: "Voucher Entry" },
       { href: "/journal", label: "General Journal" },

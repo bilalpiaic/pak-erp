@@ -77,7 +77,14 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Sales invoice CRUD with Party, PO#, and lines (Item, Detail, Quantity, Rate, Amount)
 - Direct posting: Dr Trade Debtors (1010) / Cr Sales (4001) via linked SI voucher
 - Draft / post / cancel; party outstanding updated on post/cancel
+- Printable sales invoice with company letterhead
 - `/api/sales-invoices`, `/api/sales-invoices/:id`, `/post`, `/cancel`
+
+### Phase 11 — Party Ledger & Print
+
+- Individual debtor / creditor ledger (opening, movements, closing) with print
+- Entry from Parties → Ledger and Accounting → Party Ledger
+- `/api/party-ledger`
 
 
 The legacy single-file prototype lives in `legacy/index.html`.
