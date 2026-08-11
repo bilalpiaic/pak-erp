@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AccountFormModal } from "@/components/accounts/AccountFormModal";
 import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
+import { PrintButton } from "@/components/print/PrintButton";
 import { VoucherAttachmentsPanel } from "@/components/vouchers/VoucherAttachmentsPanel";
+import { VoucherPrint } from "@/components/vouchers/VoucherPrint";
 import { centsToDecimalString, isBalanced, sumCents, toCents } from "@/lib/accounting/money";
 import type { AccountDTO } from "@/lib/accounts/types";
+import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { PartyDTO } from "@/lib/parties/types";
 import {
@@ -30,6 +33,8 @@ type VoucherFormProps = {
   initial?: VoucherDTO | null;
   accounts: AccountDTO[];
   parties?: PartyDTO[];
+  company?: CompanyDTO | null;
+  autoPrint?: boolean;
   onBack: () => void;
   onSaved: (voucher: VoucherDTO) => void;
 };
@@ -45,11 +50,19 @@ export function VoucherForm({
   initial,
   accounts: initialAccounts,
   parties: initialParties = [],
+  company = null,
+  autoPrint = false,
   onBack,
   onSaved,
 }: VoucherFormProps) {
   const readOnly =
     mode === "view" || initial?.status === "POSTED" || initial?.status === "CANCELLED";
+
+  useEffect(() => {
+    if (!autoPrint) return;
+    const timer = window.setTimeout(() => window.print(), 350);
+    return () => window.clearTimeout(timer);
+  }, [autoPrint]);
 
   const [partyOptions, setPartyOptions] = useState(initialParties);
   const [accountOptions, setAccountOptions] = useState(initialAccounts);
@@ -232,25 +245,28 @@ export function VoucherForm({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="no-print flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-[var(--accent)]">
             {VOUCHER_TYPE_LABELS[voucherType]}
           </h2>
           <p className="text-xs text-[var(--muted)]">
-            {voucherNo} · {initial?.status ?? "NEW"}
+            {voucherNo} · {savedVoucher?.status ?? initial?.status ?? "NEW"}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="border border-[var(--border-strong)] px-3 py-2 text-xs text-[var(--muted)]"
-        >
-          ← Back to List
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <PrintButton />
+          <button
+            type="button"
+            onClick={onBack}
+            className="border border-[var(--border-strong)] px-3 py-2 text-xs text-[var(--muted)]"
+          >
+            ← Back to List
+          </button>
+        </div>
       </div>
 
-      <div className="border border-[var(--border)] bg-[var(--panel)] p-4">
+      <div className="no-print border border-[var(--border)] bg-[var(--panel)] p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="block">
             <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
@@ -359,7 +375,7 @@ export function VoucherForm({
         </div>
       </div>
 
-      <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
+      <div className="no-print overflow-auto border border-[var(--border)] bg-[var(--panel)]">
         <table className="w-full min-w-[760px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
@@ -501,22 +517,24 @@ export function VoucherForm({
       </div>
 
       {error ? (
-        <p className="text-sm text-[var(--danger)]" role="alert">
+        <p className="no-print text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
 
-      <VoucherAttachmentsPanel
-        voucherId={savedVoucher?.id ?? initial?.id ?? null}
-        status={savedVoucher?.status ?? initial?.status ?? "DRAFT"}
-        initialAttachments={savedVoucher?.attachments ?? initial?.attachments ?? []}
-        readOnly={
-          (savedVoucher?.status ?? initial?.status) === "CANCELLED" || mode === "view"
-        }
-      />
+      <div className="no-print">
+        <VoucherAttachmentsPanel
+          voucherId={savedVoucher?.id ?? initial?.id ?? null}
+          status={savedVoucher?.status ?? initial?.status ?? "DRAFT"}
+          initialAttachments={savedVoucher?.attachments ?? initial?.attachments ?? []}
+          readOnly={
+            (savedVoucher?.status ?? initial?.status) === "CANCELLED" || mode === "view"
+          }
+        />
+      </div>
 
       {!readOnly ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="no-print flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() =>
@@ -548,6 +566,39 @@ export function VoucherForm({
           </button>
         </div>
       ) : null}
+
+      <div className={readOnly ? "" : "print-only"}>
+        <VoucherPrint
+          company={company}
+          voucherNo={voucherNo}
+          voucherType={voucherType}
+          voucherDate={voucherDate}
+          referenceNo={referenceNo}
+          partyName={partyName}
+          partyNtn={partyNtn}
+          whtApplicable={whtApplicable}
+          narration={narration}
+          status={savedVoucher?.status ?? initial?.status ?? "DRAFT"}
+          lines={lines
+            .filter(
+              (line) =>
+                line.accountId &&
+                ((toCents(line.debit) ?? 0) > 0 || (toCents(line.credit) ?? 0) > 0),
+            )
+            .map((line) => {
+              const account = accountOptions.find((a) => a.id === line.accountId);
+              return {
+                accountCode: account?.code ?? "",
+                accountName: account?.name ?? "",
+                debit: line.debit || "0.00",
+                credit: line.credit || "0.00",
+                lineNarration: line.lineNarration,
+              };
+            })}
+          totalDebit={centsToDecimalString(totalDebitCents)}
+          totalCredit={centsToDecimalString(totalCreditCents)}
+        />
+      </div>
 
       {showPartyModal ? (
         <PartyCreateModal

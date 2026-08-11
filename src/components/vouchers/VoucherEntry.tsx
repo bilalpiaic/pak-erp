@@ -2,8 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { PrintButton } from "@/components/print/PrintButton";
 import { VoucherForm } from "@/components/vouchers/VoucherForm";
 import type { AccountDTO } from "@/lib/accounts/types";
+import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { PartyDTO } from "@/lib/parties/types";
 import {
@@ -16,6 +18,7 @@ type VoucherEntryProps = {
   initialVouchers: VoucherDTO[];
   accounts: AccountDTO[];
   parties?: PartyDTO[];
+  company?: CompanyDTO | null;
   loadError?: string | null;
 };
 
@@ -27,6 +30,7 @@ type ViewState =
       voucherType: VoucherTypeValue;
       voucherNo: string;
       voucher?: VoucherDTO;
+      autoPrint?: boolean;
     };
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
@@ -39,6 +43,7 @@ export function VoucherEntry({
   initialVouchers,
   accounts,
   parties = [],
+  company = null,
   loadError = null,
 }: VoucherEntryProps) {
   const [vouchers, setVouchers] = useState(initialVouchers);
@@ -133,6 +138,8 @@ export function VoucherEntry({
         initial={view.voucher}
         accounts={accounts}
         parties={parties}
+        company={company}
+        autoPrint={Boolean(view.autoPrint)}
         onBack={() => setView({ kind: "list" })}
         onSaved={(voucher) => {
           setMessage(
@@ -159,7 +166,7 @@ export function VoucherEntry({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="no-print flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
           {VOUCHER_TYPES.map((type) => (
             <button
@@ -199,6 +206,7 @@ export function VoucherEntry({
             <option value="POSTED">POSTED</option>
             <option value="CANCELLED">CANCELLED</option>
           </select>
+          <PrintButton disabled={filtered.length === 0} />
           <span className="text-xs text-[var(--muted-strong)]">
             {pending ? "Refreshing…" : `${filtered.length} vouchers`}
           </span>
@@ -285,6 +293,22 @@ export function VoucherEntry({
                           className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
                         >
                           Open
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setView({
+                              kind: "form",
+                              mode: "view",
+                              voucherType: voucher.voucherType,
+                              voucherNo: voucher.voucherNo,
+                              voucher,
+                              autoPrint: true,
+                            })
+                          }
+                          className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
+                        >
+                          Print
                         </button>
                         {voucher.status === "POSTED" ? (
                           <button

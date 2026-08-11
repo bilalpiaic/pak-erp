@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { PrintButton } from "@/components/print/PrintButton";
 import { SalesInvoiceForm } from "@/components/sales-invoices/SalesInvoiceForm";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { CompanyDTO } from "@/lib/company/types";
@@ -22,6 +23,7 @@ type ViewState =
       mode: "create" | "edit" | "view";
       invoiceNo: string;
       invoice?: SalesInvoiceDTO;
+      autoPrint?: boolean;
     };
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
@@ -123,6 +125,7 @@ export function SalesInvoiceEntry({
         initial={view.invoice}
         parties={parties}
         company={company}
+        autoPrint={Boolean(view.autoPrint)}
         onBack={() => setView({ kind: "list" })}
         onSaved={(invoice) => {
           setMessage(
@@ -148,7 +151,7 @@ export function SalesInvoiceEntry({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="no-print flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <button
           type="button"
           onClick={() => void openNew()}
@@ -173,6 +176,7 @@ export function SalesInvoiceEntry({
             <option value="POSTED">POSTED</option>
             <option value="CANCELLED">CANCELLED</option>
           </select>
+          <PrintButton disabled={filtered.length === 0} />
           <span className="text-xs text-[var(--muted-strong)]">
             {pending ? "Refreshing…" : `${filtered.length} invoices`}
           </span>
@@ -261,6 +265,7 @@ export function SalesInvoiceEntry({
                               mode: "view",
                               invoiceNo: invoice.invoiceNo,
                               invoice,
+                              autoPrint: true,
                             })
                           }
                           className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"

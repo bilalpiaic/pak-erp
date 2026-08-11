@@ -194,7 +194,8 @@ a {
   }
 
   .print-letterhead,
-  .sales-invoice-print {
+  .sales-invoice-print,
+  .voucher-print {
     border: none !important;
     background: #fff !important;
     color: #000 !important;

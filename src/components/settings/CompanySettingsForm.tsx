@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { PrintButton } from "@/components/print/PrintButton";
 import type { CompanyDTO, FiscalYearDTO } from "@/lib/company/types";
 
 type CompanySettingsFormProps = {
@@ -89,6 +90,9 @@ export function CompanySettingsForm({ company, fiscalYear }: CompanySettingsForm
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
+      <div className="no-print flex justify-end">
+        <PrintButton />
+      </div>
       <div className="border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
         <h2 className="mb-4 text-sm font-semibold text-[var(--accent)]">Company Information</h2>
 
@@ -192,7 +196,7 @@ export function CompanySettingsForm({ company, fiscalYear }: CompanySettingsForm
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="no-print flex flex-wrap gap-3">
         <button
           type="submit"
           disabled={pending}

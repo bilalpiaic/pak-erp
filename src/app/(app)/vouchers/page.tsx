@@ -1,6 +1,7 @@
 import { VoucherEntry } from "@/components/vouchers/VoucherEntry";
 import { PageShell } from "@/components/ui/PageShell";
 import { listAccounts } from "@/lib/accounts/service";
+import { getPrimaryCompany } from "@/lib/company/service";
 import { listParties } from "@/lib/parties/service";
 import { listVouchers } from "@/lib/vouchers/service";
 
@@ -10,17 +11,20 @@ export default async function VouchersPage() {
   let vouchers: Awaited<ReturnType<typeof listVouchers>>["vouchers"] = [];
   let accounts: Awaited<ReturnType<typeof listAccounts>>["accounts"] = [];
   let parties: Awaited<ReturnType<typeof listParties>>["parties"] = [];
+  let company: Awaited<ReturnType<typeof getPrimaryCompany>> = null;
   let loadError: string | null = null;
 
   try {
-    const [voucherData, accountData, partyData] = await Promise.all([
+    const [voucherData, accountData, partyData, companyData] = await Promise.all([
       listVouchers(),
       listAccounts({ active: "all" }),
       listParties({ active: "active" }),
+      getPrimaryCompany(),
     ]);
     vouchers = voucherData.vouchers;
     accounts = accountData.accounts;
     parties = partyData.parties;
+    company = companyData;
   } catch (error) {
     loadError =
       error instanceof Error
@@ -37,6 +41,7 @@ export default async function VouchersPage() {
         initialVouchers={vouchers}
         accounts={accounts}
         parties={parties}
+        company={company}
         loadError={loadError}
       />
     </PageShell>

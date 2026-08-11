@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { PrintButton } from "@/components/print/PrintButton";
 import { formatCurrency } from "@/lib/formatting/money";
 import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import type { JournalLineDTO, JournalResult } from "@/lib/journal/service";
@@ -139,9 +140,7 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
         >
           Export CSV
         </button>
-        <button type="button" className="btn-secondary" onClick={() => window.print()}>
-          Print
-        </button>
+        <PrintButton />
       </div>
 
       {error ? (

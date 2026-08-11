@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { PrintButton } from "@/components/print/PrintButton";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { DashboardResult } from "@/lib/dashboard/service";
 
@@ -35,11 +36,18 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
 
   return (
     <div className="space-y-5">
-      <div>
-        <div className="font-display text-lg font-bold text-[var(--foreground)]">{data.companyName}</div>
-        <div className="text-xs text-[var(--muted)]">
-          Accounting dashboard
-          {data.fiscalYearName ? ` — ${data.fiscalYearName}` : ""} · As of {data.asOf}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="font-display text-lg font-bold text-[var(--foreground)]">
+            {data.companyName}
+          </div>
+          <div className="text-xs text-[var(--muted)]">
+            Accounting dashboard
+            {data.fiscalYearName ? ` — ${data.fiscalYearName}` : ""} · As of {data.asOf}
+          </div>
+        </div>
+        <div className="no-print">
+          <PrintButton />
         </div>
       </div>
 
@@ -64,7 +72,10 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
           <span className="text-sm font-semibold text-[var(--accent)]">
             Recent vouchers
           </span>
-          <Link href="/journal" className="text-[11px] text-[var(--accent)] hover:underline">
+          <Link
+            href="/journal"
+            className="no-print text-[11px] text-[var(--accent)] hover:underline"
+          >
             View journal →
           </Link>
         </div>

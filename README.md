@@ -84,6 +84,7 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 
 - Individual debtor / creditor ledger (opening, movements, closing) with print
 - Entry from Parties → Ledger and Accounting → Party Ledger
+- Print available across vouchers, sales invoices, COA, parties, journal, ledgers, reports, dashboard, and settings
 - `/api/party-ledger`
 
 
