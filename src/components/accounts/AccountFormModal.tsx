@@ -10,18 +10,15 @@ import {
   type AccountType,
 } from "@/lib/accounts/types";
 import {
-  BS_BY_TYPE,
-  BS_SECTION_LABELS,
   CF_BY_TYPE,
   CF_LINK_LABELS,
   GROUPS_BY_TYPE,
-  PL_BY_TYPE,
-  PL_SECTION_LABELS,
+  activeStatementHead,
+  applyStatementHead,
   defaultsForTypeGroup,
-  suggestCfLink,
-  type BsSection,
+  isBalanceSheetAccountType,
+  statementHeadsForType,
   type CfLink,
-  type PlSection,
 } from "@/lib/accounts/report-links";
 
 type AccountFormModalProps = {
@@ -86,14 +83,21 @@ export function AccountFormModal({
     () => GROUPS_BY_TYPE[form.accountType] ?? [],
     [form.accountType],
   );
-  const bsOptions = useMemo(() => BS_BY_TYPE[form.accountType] ?? [], [form.accountType]);
-  const plOptions = useMemo(() => PL_BY_TYPE[form.accountType] ?? [], [form.accountType]);
+  const statementOptions = useMemo(
+    () => statementHeadsForType(form.accountType),
+    [form.accountType],
+  );
   const cfOptions = useMemo(() => CF_BY_TYPE[form.accountType] ?? [], [form.accountType]);
 
-  const isBalanceSheetType =
-    form.accountType === "Asset" ||
-    form.accountType === "Liability" ||
-    form.accountType === "Equity";
+  const statementHeadValue = activeStatementHead({
+    accountType: form.accountType,
+    bsSection: form.bsSection,
+    plSection: form.plSection,
+  });
+
+  const statementKindLabel = isBalanceSheetAccountType(form.accountType)
+    ? "Balance Sheet"
+    : "Profit & Loss";
 
   function updateField<K extends keyof AccountInput>(key: K, value: AccountInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -127,20 +131,13 @@ export function AccountFormModal({
     setError(null);
   }
 
-  function onBsChange(bsSection: BsSection) {
+  function onStatementHeadChange(head: string) {
+    const applied = applyStatementHead(form.accountType, head);
     setForm((prev) => ({
       ...prev,
-      bsSection,
-      cfLink: suggestCfLink(prev.accountType, bsSection, (prev.plSection as PlSection) ?? "None"),
-    }));
-    setError(null);
-  }
-
-  function onPlChange(plSection: PlSection) {
-    setForm((prev) => ({
-      ...prev,
-      plSection,
-      cfLink: suggestCfLink(prev.accountType, (prev.bsSection as BsSection) ?? "None", plSection),
+      bsSection: applied.bsSection,
+      plSection: applied.plSection,
+      cfLink: applied.cfLink,
     }));
     setError(null);
   }
@@ -223,7 +220,7 @@ export function AccountFormModal({
 
             <label className="block">
               <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-                Type (BS / P&L class) *
+                Type (BS / P&amp;L class) *
               </span>
               <select
                 value={form.accountType}
@@ -255,40 +252,29 @@ export function AccountFormModal({
               </select>
             </label>
 
-            <label className="block">
+            <label className="block sm:col-span-2">
               <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-                Balance Sheet head {isBalanceSheetType ? "*" : ""}
+                Statement head ({statementKindLabel}) *
               </span>
               <select
-                value={form.bsSection ?? "None"}
-                onChange={(e) => onBsChange(e.target.value as BsSection)}
+                required
+                value={statementHeadValue}
+                onChange={(e) => onStatementHeadChange(e.target.value)}
                 className="field-input"
-                disabled={!isBalanceSheetType}
               >
-                {bsOptions.map((section) => (
-                  <option key={section} value={section}>
-                    {BS_SECTION_LABELS[section]}
+                <option value="" disabled>
+                  Select {statementKindLabel} head…
+                </option>
+                {statementOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-                Profit &amp; Loss head {!isBalanceSheetType ? "*" : ""}
+              <span className="mt-1 block text-[10px] text-[var(--muted-strong)]">
+                Either Balance Sheet or Profit &amp; Loss — never both. Type decides which heads
+                appear in this list.
               </span>
-              <select
-                value={form.plSection ?? "None"}
-                onChange={(e) => onPlChange(e.target.value as PlSection)}
-                className="field-input"
-                disabled={isBalanceSheetType}
-              >
-                {plOptions.map((section) => (
-                  <option key={section} value={section}>
-                    {PL_SECTION_LABELS[section]}
-                  </option>
-                ))}
-              </select>
             </label>
 
             <label className="block sm:col-span-2">
@@ -307,7 +293,8 @@ export function AccountFormModal({
                 ))}
               </select>
               <span className="mt-1 block text-[10px] text-[var(--muted-strong)]">
-                New accounts roll into BS / P&amp;L / CF from these links — not from account code.
+                New accounts roll into statements from Statement head + Cash Flow link — not from
+                account code.
               </span>
             </label>
 

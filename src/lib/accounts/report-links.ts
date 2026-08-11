@@ -348,3 +348,91 @@ export function isPlSection(value: string | null | undefined): value is PlSectio
 export function isCfLink(value: string | null | undefined): value is CfLink {
   return !!value && (CF_LINKS as readonly string[]).includes(value);
 }
+
+/** True when type posts to Balance Sheet (else P&L). Mutually exclusive. */
+export function isBalanceSheetAccountType(accountType: AccountType): boolean {
+  return (
+    accountType === "Asset" || accountType === "Liability" || accountType === "Equity"
+  );
+}
+
+export type StatementHeadOption = {
+  value: string;
+  label: string;
+  kind: "bs" | "pl";
+};
+
+/**
+ * Single LOV of statement heads for the account type.
+ * Asset/Liability/Equity → BS heads only; Revenue/Expense → P&L heads only.
+ */
+export function statementHeadsForType(accountType: AccountType): StatementHeadOption[] {
+  if (isBalanceSheetAccountType(accountType)) {
+    return BS_BY_TYPE[accountType]
+      .filter((section) => section !== "None")
+      .map((section) => ({
+        value: section,
+        label: `BS · ${BS_SECTION_LABELS[section]}`,
+        kind: "bs" as const,
+      }));
+  }
+  return PL_BY_TYPE[accountType]
+    .filter((section) => section !== "None")
+    .map((section) => ({
+      value: section,
+      label: `P&L · ${PL_SECTION_LABELS[section]}`,
+      kind: "pl" as const,
+    }));
+}
+
+/** Active either/or statement head value from stored bs/pl fields. */
+export function activeStatementHead(input: {
+  accountType: AccountType;
+  bsSection?: string | null;
+  plSection?: string | null;
+}): string {
+  if (isBalanceSheetAccountType(input.accountType)) {
+    return input.bsSection && input.bsSection !== "None" ? input.bsSection : "";
+  }
+  return input.plSection && input.plSection !== "None" ? input.plSection : "";
+}
+
+/** Apply one statement-head pick → exclusive bsSection / plSection + suggested CF. */
+export function applyStatementHead(
+  accountType: AccountType,
+  head: string,
+): { bsSection: BsSection; plSection: PlSection; cfLink: CfLink } {
+  if (isBalanceSheetAccountType(accountType)) {
+    const bsSection = isBsSection(head) && head !== "None" ? head : "OtherCurrentAssets";
+    const plSection: PlSection = "None";
+    return {
+      bsSection,
+      plSection,
+      cfLink: suggestCfLink(accountType, bsSection, plSection),
+    };
+  }
+  const plSection = isPlSection(head) && head !== "None" ? head : "OperatingExpense";
+  const bsSection: BsSection = "None";
+  return {
+    bsSection,
+    plSection,
+    cfLink: suggestCfLink(accountType, bsSection, plSection),
+  };
+}
+
+/** Display label for the single statement-head column on COA. */
+export function statementHeadLabel(input: {
+  accountType: AccountType;
+  bsSection?: string | null;
+  plSection?: string | null;
+}): string {
+  if (isBalanceSheetAccountType(input.accountType)) {
+    const value = input.bsSection;
+    if (!value || value === "None") return "—";
+    return isBsSection(value) ? `BS · ${BS_SECTION_LABELS[value]}` : value;
+  }
+  const value = input.plSection;
+  if (!value || value === "None") return "—";
+  return isPlSection(value) ? `P&L · ${PL_SECTION_LABELS[value]}` : value;
+}
+
