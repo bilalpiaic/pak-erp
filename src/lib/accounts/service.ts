@@ -108,7 +108,7 @@ export async function listAccounts(
         )
     `;
     searchIds = matched.map((row) => row.id);
-    where.id = { in: searchIds.length ? searchIds : [-1n] };
+    where.id = { in: searchIds.length ? searchIds : [BigInt(-1)] };
   }
 
   const rows = await prisma.account.findMany({

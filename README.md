@@ -32,6 +32,13 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Search + type/status filters
 - `/api/accounts` and `/api/accounts/:id`
 
+### Phase 4 — Voucher Engine
+
+- Draft / post / cancel workflow (BPV, BRV, CPV, CRV, JV)
+- Frontend + backend debit=credit validation using integer cents
+- Posted vouchers immutable; cancel keeps audit trail
+- `/api/vouchers`, `/api/vouchers/:id`, `/post`, `/cancel`
+
 The legacy single-file prototype lives in `legacy/index.html`.
 
 ## Getting started
