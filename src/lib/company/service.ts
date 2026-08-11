@@ -1,6 +1,10 @@
 import type { Company, FiscalYear } from "@/generated/prisma/client";
+import { cookies } from "next/headers";
+
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
+import { ACTIVE_FY_COOKIE } from "@/lib/fiscal-years/constants";
+import { buildFiscalPeriod, fiscalStartCalendarYear } from "@/lib/fiscal-years/period";
 
 import type { CompanyDTO, CompanyInput, FiscalYearDTO } from "./types";
 
@@ -47,20 +51,31 @@ export async function getPrimaryCompanyWithFiscalYear(): Promise<{
     orderBy: { id: "asc" },
     include: {
       fiscalYears: {
-        where: { isOpen: true },
         orderBy: { startDate: "desc" },
-        take: 1,
       },
     },
   });
 
   if (!company) return null;
 
+  let preferredId: string | null = null;
+  try {
+    const jar = await cookies();
+    preferredId = jar.get(ACTIVE_FY_COOKIE)?.value ?? null;
+  } catch {
+    preferredId = null;
+  }
+
+  const years = company.fiscalYears;
+  const preferred = preferredId
+    ? years.find((y) => y.id.toString() === preferredId)
+    : undefined;
+  const open = years.find((y) => y.isOpen);
+  const selected = preferred ?? open ?? years[0] ?? null;
+
   return {
     company: toCompanyDTO(company),
-    fiscalYear: company.fiscalYears[0]
-      ? toFiscalYearDTO(company.fiscalYears[0])
-      : null,
+    fiscalYear: selected ? toFiscalYearDTO(selected) : null,
   };
 }
 
@@ -121,6 +136,18 @@ export async function createCompany(input: CompanyInput): Promise<CompanyDTO> {
       },
     });
 
+    const startYear = fiscalStartCalendarYear(created.fiscalYearStart);
+    const period = buildFiscalPeriod(created.fiscalYearStart, startYear);
+    await tx.fiscalYear.create({
+      data: {
+        companyId: created.id,
+        name: period.name,
+        startDate: period.startDate,
+        endDate: period.endDate,
+        isOpen: true,
+      },
+    });
+
     await tx.auditLog.create({
       data: {
         companyId: created.id,
@@ -131,6 +158,7 @@ export async function createCompany(input: CompanyInput): Promise<CompanyDTO> {
         newValue: {
           name: created.name,
           currency: created.currency,
+          fiscalYear: period.name,
         },
       },
     });

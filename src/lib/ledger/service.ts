@@ -4,11 +4,12 @@ import {
   listAccountMeta,
   moneyFromCents,
 } from "@/lib/accounting/balances";
-import { DEFAULT_FY_START, parseIsoDate, todayIso } from "@/lib/accounting/dates";
+import { parseIsoDate } from "@/lib/accounting/dates";
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
 import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
+import { getActiveDateRange } from "@/lib/fiscal-years/service";
 import type { VoucherTypeValue } from "@/lib/vouchers/types";
 
 export type LedgerQuery = {
@@ -74,8 +75,9 @@ export async function getLedger(query: LedgerQuery = {}): Promise<LedgerResult> 
   const account = accounts.find((a) => a.code === code);
   if (!account) throw new Error(`Account ${code} not found.`);
 
-  const fromStr = query.from ?? DEFAULT_FY_START;
-  const toStr = query.to ?? todayIso();
+  const activeRange = await getActiveDateRange();
+  const fromStr = query.from ?? activeRange.from;
+  const toStr = query.to ?? activeRange.to;
   const from = parseIsoDate(fromStr);
   const to = parseIsoDate(toStr);
   if (!from || !to) throw new Error("Invalid date range. Use YYYY-MM-DD.");

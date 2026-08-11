@@ -2,7 +2,8 @@ import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
 import { centsToDecimalString, sumCents, toCents } from "@/lib/accounting/money";
-import { DEFAULT_FY_START, parseIsoDate, todayIso } from "@/lib/accounting/dates";
+import { parseIsoDate } from "@/lib/accounting/dates";
+import { getActiveDateRange } from "@/lib/fiscal-years/service";
 import { ALL_VOUCHER_TYPES, type VoucherTypeValue } from "@/lib/vouchers/types";
 
 export type JournalQuery = {
@@ -44,8 +45,9 @@ export async function getJournal(query: JournalQuery = {}): Promise<JournalResul
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
 
-  const fromStr = query.from ?? DEFAULT_FY_START;
-  const toStr = query.to ?? todayIso();
+  const activeRange = await getActiveDateRange();
+  const fromStr = query.from ?? activeRange.from;
+  const toStr = query.to ?? activeRange.to;
   const from = parseIsoDate(fromStr);
   const to = parseIsoDate(toStr);
   if (!from || !to) throw new Error("Invalid date range. Use YYYY-MM-DD.");

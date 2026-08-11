@@ -80,12 +80,13 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Printable sales invoice with company letterhead
 - `/api/sales-invoices`, `/api/sales-invoices/:id`, `/post`, `/cancel`
 
-### Phase 11 — Party Ledger & Print
+### Phase 12 — Fiscal year selection
 
-- Individual debtor / creditor ledger (opening, movements, closing) with print
-- Entry from Parties → Ledger and Accounting → Party Ledger
-- Print available across vouchers, sales invoices, COA, parties, journal, ledgers, reports, dashboard, and settings
-- `/api/party-ledger`
+- User-selectable active fiscal year (sidebar dropdown, cookie-persisted)
+- Create next FY / open / close from Settings
+- Journal, ledgers, and reports default date range follows the selected FY
+- Creating a company auto-creates the current fiscal year
+- `/api/fiscal-years`, `/api/fiscal-years/:id`, `/api/fiscal-years/select`
 
 
 The legacy single-file prototype lives in `legacy/index.html`.

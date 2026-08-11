@@ -16,7 +16,7 @@ export function todayIso(): string {
   return toIsoDate(new Date());
 }
 
-/** Default Gill Embroidery FY start used by seed data. */
+/** Fallback FY start when no fiscal year row / selection exists (matches seed). */
 export const DEFAULT_FY_START = "2024-07-01";
 
 export function defaultDateRange(fiscalStart?: string | null): {

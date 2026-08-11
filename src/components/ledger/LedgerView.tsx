@@ -3,9 +3,9 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { useFiscalYear } from "@/components/fiscal-year/FiscalYearProvider";
 import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
-import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import type { LedgerResult } from "@/lib/ledger/service";
 import { partyLedgerHref, voucherHref } from "@/lib/links";
 
@@ -22,11 +22,12 @@ export function LedgerView({
   accounts,
   loadError = null,
 }: LedgerViewProps) {
+  const { activeRange } = useFiscalYear();
   const [account, setAccount] = useState(
     initial?.account.code ?? accounts[0]?.code ?? "1001",
   );
-  const [from, setFrom] = useState(initial?.from ?? DEFAULT_FY_START);
-  const [to, setTo] = useState(initial?.to ?? todayIso());
+  const [from, setFrom] = useState(initial?.from ?? activeRange.from);
+  const [to, setTo] = useState(initial?.to ?? activeRange.to);
   const [data, setData] = useState<LedgerResult | null>(initial);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();

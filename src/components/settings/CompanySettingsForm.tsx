@@ -175,13 +175,15 @@ export function CompanySettingsForm({ company, fiscalYear }: CompanySettingsForm
 
       {fiscalYear ? (
         <div className="border border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-sm text-[var(--muted)]">
-          Open fiscal year:{" "}
+          Active fiscal year:{" "}
           <span className="font-medium text-[var(--foreground)]">{fiscalYear.name}</span> (
-          {fiscalYear.startDate} → {fiscalYear.endDate})
+          {fiscalYear.startDate} → {fiscalYear.endDate}
+          {fiscalYear.isOpen ? "" : ", closed"})
+          . Change selection in the sidebar or manage years below.
         </div>
       ) : (
         <div className="border border-dashed border-[var(--border-strong)] bg-[var(--panel)] px-4 py-3 text-sm text-[var(--muted)]">
-          No open fiscal year recorded yet. Seed data includes FY 2024-25.
+          No fiscal year recorded yet. Use Fiscal Years below to create one.
         </div>
       )}
 
