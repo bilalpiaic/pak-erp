@@ -29,16 +29,7 @@ async function main() {
     await prisma.company.deleteMany();
 
     const company = await prisma.company.create({
-      data: {
-        ...SEED_COMPANY,
-        // Neutral shell company — not demo trading data
-        name: "My Company",
-        address: null,
-        ntn: null,
-        strn: null,
-        phone: null,
-        email: null,
-      },
+      data: SEED_COMPANY,
     });
 
     await prisma.fiscalYear.create({

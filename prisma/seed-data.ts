@@ -1,62 +1,73 @@
-/** Chart of accounts for garment trading — Pakistani SME style. */
+import type { NormalBalance } from "../src/generated/prisma/client";
 
-export const SEED_FISCAL_YEAR = {
-  name: "FY 2025-26",
-  startDate: new Date("2025-07-01T00:00:00.000Z"),
-  endDate: new Date("2026-06-30T23:59:59.999Z"),
+/** Neutral shell company — not demo trading identity. */
+export const SEED_COMPANY = {
+  name: "My Company",
+  ntn: null as string | null,
+  strn: null as string | null,
+  address: null as string | null,
+  phone: null as string | null,
+  email: null as string | null,
+  currency: "PKR",
+  fiscalYearStart: 7,
 };
 
-export const SEED_ACCOUNTS: Array<{
+export const SEED_FISCAL_YEAR = {
+  name: "FY 2024-25",
+  startDate: new Date("2024-07-01"),
+  endDate: new Date("2025-06-30"),
+  isOpen: true,
+};
+
+export type SeedAccount = {
   code: string;
   name: string;
-  type: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
-  parentCode: string | null;
-  isPostable: boolean;
-  openingDebit: number;
-  openingCredit: number;
-}> = [
-  { code: "1000", name: "Assets", type: "ASSET", parentCode: null, isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "1100", name: "Current Assets", type: "ASSET", parentCode: "1000", isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "1110", name: "Cash in Hand", type: "ASSET", parentCode: "1100", isPostable: true, openingDebit: 150000, openingCredit: 0 },
-  { code: "1120", name: "Cash at Bank - HBL", type: "ASSET", parentCode: "1100", isPostable: true, openingDebit: 1250000, openingCredit: 0 },
-  { code: "1130", name: "Accounts Receivable", type: "ASSET", parentCode: "1100", isPostable: true, openingDebit: 485000, openingCredit: 0 },
-  { code: "1140", name: "Inventory - Finished Goods", type: "ASSET", parentCode: "1100", isPostable: true, openingDebit: 2100000, openingCredit: 0 },
-  { code: "1150", name: "Inventory - Raw Material", type: "ASSET", parentCode: "1100", isPostable: true, openingDebit: 650000, openingCredit: 0 },
-  { code: "1160", name: "Advance Income Tax", type: "ASSET", parentCode: "1100", isPostable: true, openingDebit: 85000, openingCredit: 0 },
-  { code: "1170", name: "Sales Tax Input", type: "ASSET", parentCode: "1100", isPostable: true, openingDebit: 42000, openingCredit: 0 },
-  { code: "1200", name: "Non-Current Assets", type: "ASSET", parentCode: "1000", isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "1210", name: "Furniture & Fixtures", type: "ASSET", parentCode: "1200", isPostable: true, openingDebit: 320000, openingCredit: 0 },
-  { code: "1220", name: "Office Equipment", type: "ASSET", parentCode: "1200", isPostable: true, openingDebit: 185000, openingCredit: 0 },
-  { code: "1230", name: "Accumulated Depreciation", type: "ASSET", parentCode: "1200", isPostable: true, openingDebit: 0, openingCredit: 95000 },
+  accountType: string;
+  accountGroup: string;
+  normalBalance: NormalBalance;
+  isActive: boolean;
+};
 
-  { code: "2000", name: "Liabilities", type: "LIABILITY", parentCode: null, isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "2100", name: "Current Liabilities", type: "LIABILITY", parentCode: "2000", isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "2110", name: "Accounts Payable", type: "LIABILITY", parentCode: "2100", isPostable: true, openingDebit: 0, openingCredit: 720000 },
-  { code: "2120", name: "Sales Tax Payable", type: "LIABILITY", parentCode: "2100", isPostable: true, openingDebit: 0, openingCredit: 58000 },
-  { code: "2130", name: "Withholding Tax Payable", type: "LIABILITY", parentCode: "2100", isPostable: true, openingDebit: 0, openingCredit: 12500 },
-  { code: "2140", name: "Accrued Expenses", type: "LIABILITY", parentCode: "2100", isPostable: true, openingDebit: 0, openingCredit: 45000 },
-  { code: "2200", name: "Non-Current Liabilities", type: "LIABILITY", parentCode: "2000", isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "2210", name: "Long-term Loan", type: "LIABILITY", parentCode: "2200", isPostable: true, openingDebit: 0, openingCredit: 500000 },
-
-  { code: "3000", name: "Equity", type: "EQUITY", parentCode: null, isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "3100", name: "Owner's Capital", type: "EQUITY", parentCode: "3000", isPostable: true, openingDebit: 0, openingCredit: 3500000 },
-  { code: "3200", name: "Owner's Drawings", type: "EQUITY", parentCode: "3000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "3300", name: "Retained Earnings", type: "EQUITY", parentCode: "3000", isPostable: true, openingDebit: 0, openingCredit: 236500 },
-
-  { code: "4000", name: "Revenue", type: "REVENUE", parentCode: null, isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "4100", name: "Sales - Local", type: "REVENUE", parentCode: "4000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "4200", name: "Sales - Export", type: "REVENUE", parentCode: "4000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "4300", name: "Other Income", type: "REVENUE", parentCode: "4000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-
-  { code: "5000", name: "Expenses", type: "EXPENSE", parentCode: null, isPostable: false, openingDebit: 0, openingCredit: 0 },
-  { code: "5100", name: "Cost of Goods Sold", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5200", name: "Salaries & Wages", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5300", name: "Rent Expense", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5400", name: "Utilities", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5500", name: "Freight & Carriage", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5600", name: "Bank Charges", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5700", name: "Office Supplies", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5800", name: "Depreciation Expense", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5900", name: "Miscellaneous Expense", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
-  { code: "5950", name: "Withholding Tax Expense", type: "EXPENSE", parentCode: "5000", isPostable: true, openingDebit: 0, openingCredit: 0 },
+/** Chart of accounts only — no demo parties or vouchers. */
+export const SEED_ACCOUNTS: SeedAccount[] = [
+  { code: "1001", name: "Cash in Hand", accountGroup: "Current Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1002", name: "Cash at Bank - HBL", accountGroup: "Current Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1003", name: "Cash at Bank - MCB", accountGroup: "Current Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1010", name: "Trade Debtors", accountGroup: "Current Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1020", name: "Stock in Trade", accountGroup: "Current Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1030", name: "Advances - Employees", accountGroup: "Current Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1040", name: "Prepaid Expenses", accountGroup: "Other Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1050", name: "Security Deposits", accountGroup: "Other Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1201", name: "Plant & Machinery", accountGroup: "Fixed Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1202", name: "Furniture & Fixtures", accountGroup: "Fixed Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1203", name: "Motor Vehicles", accountGroup: "Fixed Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1204", name: "Land & Building", accountGroup: "Fixed Assets", accountType: "Asset", normalBalance: "Debit", isActive: true },
+  { code: "1205", name: "Accum. Depreciation", accountGroup: "Fixed Assets", accountType: "Asset", normalBalance: "Credit", isActive: true },
+  { code: "2001", name: "Trade Creditors", accountGroup: "Current Liabilities", accountType: "Liability", normalBalance: "Credit", isActive: true },
+  { code: "2002", name: "Accrued Liabilities", accountGroup: "Current Liabilities", accountType: "Liability", normalBalance: "Credit", isActive: true },
+  { code: "2003", name: "Sales Tax Payable", accountGroup: "Current Liabilities", accountType: "Liability", normalBalance: "Credit", isActive: true },
+  { code: "2004", name: "Income Tax Payable", accountGroup: "Current Liabilities", accountType: "Liability", normalBalance: "Credit", isActive: true },
+  { code: "2005", name: "WHT Payable", accountGroup: "Current Liabilities", accountType: "Liability", normalBalance: "Credit", isActive: true },
+  { code: "2006", name: "Short-term Loans", accountGroup: "Current Liabilities", accountType: "Liability", normalBalance: "Credit", isActive: true },
+  { code: "2201", name: "Long-term Financing", accountGroup: "Long-term Liabilities", accountType: "Liability", normalBalance: "Credit", isActive: true },
+  { code: "3001", name: "Owner's Capital", accountGroup: "Equity", accountType: "Equity", normalBalance: "Credit", isActive: true },
+  { code: "3002", name: "Retained Earnings", accountGroup: "Equity", accountType: "Equity", normalBalance: "Credit", isActive: true },
+  { code: "3003", name: "Drawings", accountGroup: "Equity", accountType: "Equity", normalBalance: "Debit", isActive: true },
+  { code: "4001", name: "Sales - Taxable", accountGroup: "Revenue", accountType: "Revenue", normalBalance: "Credit", isActive: true },
+  { code: "4002", name: "Sales - Exempt", accountGroup: "Revenue", accountType: "Revenue", normalBalance: "Credit", isActive: true },
+  { code: "4003", name: "Other Income", accountGroup: "Revenue", accountType: "Revenue", normalBalance: "Credit", isActive: true },
+  { code: "5001", name: "Opening Stock", accountGroup: "COGS", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "5002", name: "Purchases", accountGroup: "COGS", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "5003", name: "Closing Stock", accountGroup: "COGS", accountType: "Expense", normalBalance: "Credit", isActive: true },
+  { code: "6001", name: "Salaries & Wages", accountGroup: "Operating Expenses", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "6002", name: "Rent Expense", accountGroup: "Operating Expenses", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "6003", name: "Utility Bills", accountGroup: "Operating Expenses", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "6004", name: "Transport Expense", accountGroup: "Operating Expenses", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "6005", name: "Administrative Expenses", accountGroup: "Administrative", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "6006", name: "Selling Expenses", accountGroup: "Selling & Distribution", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "6007", name: "Depreciation Expense", accountGroup: "Operating Expenses", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "7001", name: "Bank Charges", accountGroup: "Financial Charges", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "7002", name: "Markup / Interest", accountGroup: "Financial Charges", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "8001", name: "Income Tax - Current", accountGroup: "Taxation", accountType: "Expense", normalBalance: "Debit", isActive: true },
+  { code: "8002", name: "Sales Tax (GST)", accountGroup: "Taxation", accountType: "Expense", normalBalance: "Debit", isActive: true },
 ];
