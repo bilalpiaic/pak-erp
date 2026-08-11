@@ -39,6 +39,31 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Posted vouchers immutable; cancel keeps audit trail
 - `/api/vouchers`, `/api/vouchers/:id`, `/post`, `/cancel`
 
+### Phase 5 — Ledger & Journal
+
+- General Journal of posted lines with date / type / search filters + CSV export
+- Account Ledger with opening, period movements, running balance, closing
+- `/api/journal`, `/api/ledger`
+
+### Phase 6 — Reports
+
+- Trial Balance, Balance Sheet, Profit & Loss, Cash Flow (from posted lines)
+- Debtors / Creditors aging with age buckets
+- `/api/reports/:type`
+
+### Phase 7 — Dashboard
+
+- Live KPIs (assets, liabilities, MTD revenue/expenses/profit, cash & bank)
+- Recent vouchers list
+- `/api/dashboard`
+
+### Phase 8 — Production hardening
+
+- Graceful DB-unavailable UI errors on all major pages
+- Print styles + CSV export helpers
+- Resilient Vercel build (`scripts/vercel-build.sh`)
+- Health check reports DB + `AUTH_SECRET` presence
+
 The legacy single-file prototype lives in `legacy/index.html`.
 
 ## Getting started

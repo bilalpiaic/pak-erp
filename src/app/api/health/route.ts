@@ -17,6 +17,7 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       database: "up",
+      authSecretConfigured: Boolean(process.env.AUTH_SECRET),
       counts: { companies, accounts, vouchers },
     });
   } catch (error) {
@@ -25,6 +26,7 @@ export async function GET() {
       {
         ok: false,
         database: "down",
+        authSecretConfigured: Boolean(process.env.AUTH_SECRET),
         error: error instanceof Error ? error.message : "Database unavailable",
       },
       { status: 503 },
