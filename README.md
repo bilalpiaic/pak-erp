@@ -26,7 +26,7 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 
 ### Phase 3 — Chart of Accounts
 
-- COA list grouped by account group (hierarchy)
+- COA list sorted code-wise (1→9), grouped by account group (hierarchy)
 - Create / edit accounts
 - Activate / deactivate
 - Search + type/status filters

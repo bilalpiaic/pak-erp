@@ -114,7 +114,8 @@ export async function listAccounts(
   const rows = await prisma.account.findMany({
     where,
     include: { _count: { select: { voucherLines: true } } },
-    orderBy: [{ accountGroup: "asc" }, { code: "asc" }],
+    // Code-wise order (1→9 / 1001→8002). Groups follow first appearance in that order.
+    orderBy: { code: "asc" },
   });
 
   const accounts = rows.map(toAccountDTO);
@@ -127,6 +128,7 @@ export async function listAccounts(
     groupMap.set(key, list);
   }
 
+  // Preserve Map insertion order so sections appear in code sequence, not A→Z by group name.
   const groups = Array.from(groupMap.entries()).map(([group, items]) => ({
     group,
     accounts: items,

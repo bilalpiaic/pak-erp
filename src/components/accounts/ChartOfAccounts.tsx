@@ -249,8 +249,8 @@ export function ChartOfAccounts({
       </div>
 
       <p className="text-xs text-[var(--muted-strong)]">
-        Accounts are grouped for hierarchy. Codes are immutable after creation; deactivate
-        instead of deleting when transactions exist (
+        Accounts are listed code-wise (1→9) and grouped for hierarchy. Codes are immutable
+        after creation; deactivate instead of deleting when transactions exist (
         {accounts.filter((a) => a.hasTransactions).length} accounts currently have posted
         lines).
       </p>
