@@ -88,14 +88,16 @@ Production/dev cloud database is intended to run on [Neon](https://neon.tech).
 npm run db:setup
 ```
 
-Vercel build runs `prisma migrate deploy` automatically when `DATABASE_URL` is set in the project Environment Variables (Production + Preview).
+Build uses `scripts/vercel-build.sh`: it runs `prisma migrate deploy` when `DATABASE_URL` is set, then always `prisma generate` + `next build`. Without `DATABASE_URL`, the frontend still builds; API routes that need Postgres will fail at runtime until the variable is configured.
 
-Set these in [Vercel → pak-erp → Settings → Environment Variables](https://vercel.com/bilalpiaics-projects/pak-erp/settings/environment-variables):
+Set these in [Vercel → pak-erp → Settings → Environment Variables](https://vercel.com/bilalpiaics-projects/pak-erp/settings/environment-variables) for **Production** and **Preview**, then Redeploy:
 
 | Name | Notes |
 |---|---|
-| `DATABASE_URL` | Neon pooled URL with `sslmode=require` |
-| `AUTH_SECRET` | Random secret for future auth |
+| `DATABASE_URL` | Neon **pooled** URL with `sslmode=require` (drop `channel_binding=require` if present) |
+| `AUTH_SECRET` | Long random secret |
+
+After env vars are saved, open the latest deployment → **Redeploy**, or push a new commit. Production URL updates when this branch is merged to `main` (or you promote a production deployment).
 
 ## Scripts
 
