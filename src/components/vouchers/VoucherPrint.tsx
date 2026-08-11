@@ -1,8 +1,9 @@
 "use client";
 
-import { PrintLetterhead } from "@/components/print/PrintLetterhead";
+import { OriginLink } from "@/components/ui/OriginLink";
 import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
+import { accountLedgerHref, partyLedgerHref } from "@/lib/links";
 import {
   VOUCHER_TYPE_LABELS,
   type VoucherStatusValue,
@@ -18,13 +19,15 @@ export type VoucherPrintLine = {
 };
 
 type VoucherPrintProps = {
-  company: CompanyDTO | null;
+  company?: CompanyDTO | null;
   voucherNo: string;
   voucherType: VoucherTypeValue;
   voucherDate: string;
   referenceNo?: string | null;
+  partyId?: string | null;
   partyName?: string | null;
   partyNtn?: string | null;
+  partyKind?: "debtor" | "creditor";
   whtApplicable?: boolean;
   narration?: string | null;
   status?: VoucherStatusValue | string | null;
@@ -34,13 +37,14 @@ type VoucherPrintProps = {
 };
 
 export function VoucherPrint({
-  company,
   voucherNo,
   voucherType,
   voucherDate,
   referenceNo,
+  partyId,
   partyName,
   partyNtn,
+  partyKind = "debtor",
   whtApplicable,
   narration,
   status,
@@ -50,11 +54,14 @@ export function VoucherPrint({
 }: VoucherPrintProps) {
   return (
     <div className="voucher-print border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-6">
-      <PrintLetterhead
-        company={company}
-        title={VOUCHER_TYPE_LABELS[voucherType] ?? voucherType}
-        subtitle={status ? `Status: ${status}` : undefined}
-      />
+      <div className="mb-4 border-b border-[var(--border)] pb-3">
+        <div className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
+          {VOUCHER_TYPE_LABELS[voucherType] ?? voucherType}
+        </div>
+        {status ? (
+          <div className="mt-1 text-xs text-[var(--muted)]">Status: {status}</div>
+        ) : null}
+      </div>
 
       <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
         <div className="space-y-1">
@@ -62,7 +69,13 @@ export function VoucherPrint({
             <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
               Party
             </span>
-            <div className="font-semibold">{partyName || "—"}</div>
+            <div className="font-semibold">
+              {partyId && partyName ? (
+                <OriginLink href={partyLedgerHref(partyId, partyKind)}>{partyName}</OriginLink>
+              ) : (
+                partyName || "—"
+              )}
+            </div>
             {partyNtn ? (
               <div className="text-xs text-[var(--muted)]">NTN {partyNtn}</div>
             ) : null}
@@ -119,8 +132,27 @@ export function VoucherPrint({
               <tr key={`${line.accountCode}-${index}`}>
                 <td className="text-xs text-[var(--muted)]">{index + 1}</td>
                 <td>
-                  <div className="font-mono text-xs text-[var(--accent)]">{line.accountCode}</div>
-                  <div className="text-xs">{line.accountName}</div>
+                  {line.accountCode ? (
+                    <>
+                      <div className="font-mono text-xs text-[var(--accent)]">
+                        <OriginLink href={accountLedgerHref(line.accountCode)}>
+                          {line.accountCode}
+                        </OriginLink>
+                      </div>
+                      <div className="text-xs">
+                        <OriginLink href={accountLedgerHref(line.accountCode)}>
+                          {line.accountName}
+                        </OriginLink>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="font-mono text-xs text-[var(--accent)]">
+                        {line.accountCode}
+                      </div>
+                      <div className="text-xs">{line.accountName}</div>
+                    </>
+                  )}
                 </td>
                 <td className="text-xs text-[var(--muted)]">{line.lineNarration || "—"}</td>
                 <td className="text-right font-mono text-xs">

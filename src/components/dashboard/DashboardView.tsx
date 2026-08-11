@@ -3,8 +3,10 @@
 import Link from "next/link";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { DashboardResult } from "@/lib/dashboard/service";
+import { partyLedgerHref, voucherHref } from "@/lib/links";
 
 type DashboardViewProps = {
   data: DashboardResult | null;
@@ -103,9 +105,26 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
                 data.recent.map((v) => (
                   <tr key={v.id}>
                     <td className="whitespace-nowrap">{v.date}</td>
-                    <td className="font-mono text-[11px]">{v.voucherNo}</td>
+                    <td className="font-mono text-[11px]">
+                      <OriginLink href={voucherHref(v.id)}>{v.voucherNo}</OriginLink>
+                    </td>
                     <td>{v.voucherType}</td>
-                    <td>{v.partyName ?? "—"}</td>
+                    <td>
+                      {v.partyId && v.partyName ? (
+                        <OriginLink
+                          href={partyLedgerHref(
+                            v.partyId,
+                            v.voucherType === "BPV" || v.voucherType === "CPV"
+                              ? "creditor"
+                              : "debtor",
+                          )}
+                        >
+                          {v.partyName}
+                        </OriginLink>
+                      ) : (
+                        (v.partyName ?? "—")
+                      )}
+                    </td>
                     <td className="max-w-[240px] truncate text-[var(--muted)]">
                       {v.narration ?? ""}
                     </td>

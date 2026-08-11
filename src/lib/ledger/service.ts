@@ -22,6 +22,7 @@ export type LedgerTxnDTO = {
   voucherId: string;
   voucherNo: string;
   voucherType: VoucherTypeValue;
+  partyId: string | null;
   partyName: string | null;
   narration: string | null;
   debit: string;
@@ -121,6 +122,7 @@ export async function getLedger(query: LedgerQuery = {}): Promise<LedgerResult> 
         voucherId: voucher.id.toString(),
         voucherNo: voucher.voucherNo,
         voucherType: voucher.voucherType as VoucherTypeValue,
+        partyId: voucher.partyId?.toString() ?? null,
         partyName: voucher.partyName,
         narration: line.lineNarration ?? voucher.narration,
         debit: centsToDecimalString(debit),

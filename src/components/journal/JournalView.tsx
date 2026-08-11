@@ -3,9 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
 import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import type { JournalLineDTO, JournalResult } from "@/lib/journal/service";
+import { accountLedgerHref, partyLedgerHref, voucherHref } from "@/lib/links";
 import { VOUCHER_TYPES } from "@/lib/vouchers/types";
 import { downloadCsv } from "@/lib/export/csv";
 
@@ -175,11 +177,36 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
               lines.map((line: JournalLineDTO, idx) => (
                 <tr key={`${line.voucherId}-${line.accountCode}-${idx}`}>
                   <td className="whitespace-nowrap">{line.date}</td>
-                  <td className="font-mono text-[11px]">{line.voucherNo}</td>
+                  <td className="font-mono text-[11px]">
+                    <OriginLink href={voucherHref(line.voucherId)}>{line.voucherNo}</OriginLink>
+                  </td>
                   <td>{line.voucherType}</td>
-                  <td className="font-mono">{line.accountCode}</td>
-                  <td>{line.accountName}</td>
-                  <td>{line.partyName ?? "—"}</td>
+                  <td className="font-mono">
+                    <OriginLink href={accountLedgerHref(line.accountCode)}>
+                      {line.accountCode}
+                    </OriginLink>
+                  </td>
+                  <td>
+                    <OriginLink href={accountLedgerHref(line.accountCode)}>
+                      {line.accountName}
+                    </OriginLink>
+                  </td>
+                  <td>
+                    {line.partyId && line.partyName ? (
+                      <OriginLink
+                        href={partyLedgerHref(
+                          line.partyId,
+                          line.voucherType === "BPV" || line.voucherType === "CPV"
+                            ? "creditor"
+                            : "debtor",
+                        )}
+                      >
+                        {line.partyName}
+                      </OriginLink>
+                    ) : (
+                      (line.partyName ?? "—")
+                    )}
+                  </td>
                   <td className="text-right font-mono text-[var(--success)]">
                     {Number(line.debit) > 0 ? formatCurrency(line.debit) : ""}
                   </td>

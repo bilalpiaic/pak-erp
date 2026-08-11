@@ -1,8 +1,9 @@
 "use client";
 
-import { PrintLetterhead } from "@/components/print/PrintLetterhead";
+import { OriginLink } from "@/components/ui/OriginLink";
 import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
+import { partyLedgerHref, voucherHref } from "@/lib/links";
 import type { SalesInvoiceDTO } from "@/lib/sales-invoices/types";
 
 type PrintLine = {
@@ -14,14 +15,16 @@ type PrintLine = {
 };
 
 type SalesInvoicePrintProps = {
-  company: CompanyDTO | null;
+  company?: CompanyDTO | null;
   invoiceNo: string;
   invoiceDate: string;
+  partyId?: string | null;
   partyName: string;
   partyNtn?: string | null;
   poNumber?: string | null;
   narration?: string | null;
   status?: string | null;
+  voucherId?: string | null;
   voucherNo?: string | null;
   lines: PrintLine[];
   totalAmount: string;
@@ -36,11 +39,13 @@ export function printPropsFromInvoice(
     company,
     invoiceNo: invoice.invoiceNo,
     invoiceDate: invoice.invoiceDate,
+    partyId: invoice.partyId,
     partyName: invoice.partyName,
     partyNtn: invoice.partyNtn,
     poNumber: invoice.poNumber,
     narration: invoice.narration,
     status: invoice.status,
+    voucherId: invoice.voucherId,
     voucherNo: invoice.voucherNo,
     lines: invoice.lines.map((line) => ({
       item: line.item,
@@ -54,21 +59,29 @@ export function printPropsFromInvoice(
 }
 
 export function SalesInvoicePrint({
-  company,
   invoiceNo,
   invoiceDate,
+  partyId,
   partyName,
   partyNtn,
   poNumber,
   narration,
   status,
+  voucherId,
   voucherNo,
   lines,
   totalAmount,
 }: SalesInvoicePrintProps) {
   return (
     <div className="sales-invoice-print border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-6">
-      <PrintLetterhead company={company} title="Sales Invoice" subtitle={status ?? undefined} />
+      <div className="mb-4 border-b border-[var(--border)] pb-3">
+        <div className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
+          Sales Invoice
+        </div>
+        {status ? (
+          <div className="mt-1 text-xs text-[var(--muted)]">Status: {status}</div>
+        ) : null}
+      </div>
 
       <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
         <div className="space-y-1">
@@ -76,7 +89,13 @@ export function SalesInvoicePrint({
             <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
               Bill to
             </span>
-            <div className="font-semibold">{partyName || "—"}</div>
+            <div className="font-semibold">
+              {partyId && partyName ? (
+                <OriginLink href={partyLedgerHref(partyId, "debtor")}>{partyName}</OriginLink>
+              ) : (
+                partyName || "—"
+              )}
+            </div>
             {partyNtn ? (
               <div className="text-xs text-[var(--muted)]">NTN {partyNtn}</div>
             ) : null}
@@ -108,7 +127,11 @@ export function SalesInvoicePrint({
           {voucherNo ? (
             <div className="text-xs">
               <span className="text-[var(--muted)]">Voucher: </span>
-              {voucherNo}
+              {voucherId ? (
+                <OriginLink href={voucherHref(voucherId)}>{voucherNo}</OriginLink>
+              ) : (
+                voucherNo
+              )}
             </div>
           ) : null}
         </div>

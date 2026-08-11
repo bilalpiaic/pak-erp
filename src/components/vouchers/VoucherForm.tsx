@@ -574,8 +574,12 @@ export function VoucherForm({
           voucherType={voucherType}
           voucherDate={voucherDate}
           referenceNo={referenceNo}
+          partyId={partyId || null}
           partyName={partyName}
           partyNtn={partyNtn}
+          partyKind={
+            voucherType === "BPV" || voucherType === "CPV" ? "creditor" : "debtor"
+          }
           whtApplicable={whtApplicable}
           narration={narration}
           status={savedVoucher?.status ?? initial?.status ?? "DRAFT"}

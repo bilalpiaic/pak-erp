@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import { PrintButton } from "@/components/print/PrintButton";
 import { SalesInvoiceForm } from "@/components/sales-invoices/SalesInvoiceForm";
+import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { CompanyDTO } from "@/lib/company/types";
+import { partyLedgerHref, salesInvoiceHref } from "@/lib/links";
 import type { PartyDTO } from "@/lib/parties/types";
 import type { SalesInvoiceDTO } from "@/lib/sales-invoices/types";
 
@@ -13,6 +16,7 @@ type SalesInvoiceEntryProps = {
   initialInvoices: SalesInvoiceDTO[];
   parties: PartyDTO[];
   company: CompanyDTO | null;
+  openInvoice?: SalesInvoiceDTO | null;
   loadError?: string | null;
 };
 
@@ -36,8 +40,10 @@ export function SalesInvoiceEntry({
   initialInvoices,
   parties,
   company,
+  openInvoice = null,
   loadError = null,
 }: SalesInvoiceEntryProps) {
+  const router = useRouter();
   const [invoices, setInvoices] = useState(initialInvoices);
   const [view, setView] = useState<ViewState>({ kind: "list" });
   const [search, setSearch] = useState("");
@@ -45,6 +51,16 @@ export function SalesInvoiceEntry({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!openInvoice) return;
+    setView({
+      kind: "form",
+      mode: openInvoice.status === "DRAFT" ? "edit" : "view",
+      invoiceNo: openInvoice.invoiceNo,
+      invoice: openInvoice,
+    });
+  }, [openInvoice?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- open by id from deep link
 
   const filtered = useMemo(() => {
     return invoices.filter((invoice) => {
@@ -126,7 +142,12 @@ export function SalesInvoiceEntry({
         parties={parties}
         company={company}
         autoPrint={Boolean(view.autoPrint)}
-        onBack={() => setView({ kind: "list" })}
+        onBack={() => {
+          setView({ kind: "list" });
+          if (openInvoice) {
+            router.replace("/sales-invoices");
+          }
+        }}
         onSaved={(invoice) => {
           setMessage(
             invoice.status === "POSTED"
@@ -223,10 +244,16 @@ export function SalesInvoiceEntry({
                     className="border-b border-[var(--border)]/60 hover:bg-[rgba(26,37,64,0.45)]"
                   >
                     <td className="px-3 py-2 font-semibold text-[var(--accent)]">
-                      {invoice.invoiceNo}
+                      <OriginLink href={salesInvoiceHref(invoice.id)}>
+                        {invoice.invoiceNo}
+                      </OriginLink>
                     </td>
                     <td className="px-3 py-2 text-xs">{invoice.invoiceDate}</td>
-                    <td className="px-3 py-2 text-sm">{invoice.partyName}</td>
+                    <td className="px-3 py-2 text-sm">
+                      <OriginLink href={partyLedgerHref(invoice.partyId, "debtor")}>
+                        {invoice.partyName}
+                      </OriginLink>
+                    </td>
                     <td className="px-3 py-2 text-xs text-[var(--muted)]">
                       {invoice.poNumber || "—"}
                     </td>

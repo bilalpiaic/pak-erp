@@ -19,6 +19,7 @@ export type JournalLineDTO = {
   voucherType: VoucherTypeValue;
   accountCode: string;
   accountName: string;
+  partyId: string | null;
   partyName: string | null;
   referenceNo: string | null;
   narration: string | null;
@@ -102,6 +103,7 @@ export async function getJournal(query: JournalQuery = {}): Promise<JournalResul
         voucherType: voucher.voucherType as VoucherTypeValue,
         accountCode: line.account.code,
         accountName: line.account.name,
+        partyId: voucher.partyId?.toString() ?? null,
         partyName: voucher.partyName,
         referenceNo: voucher.referenceNo,
         narration,

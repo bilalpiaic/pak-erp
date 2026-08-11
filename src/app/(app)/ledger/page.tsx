@@ -4,16 +4,26 @@ import { getLedger, listLedgerAccounts } from "@/lib/ledger/service";
 
 export const dynamic = "force-dynamic";
 
-export default async function LedgerPage() {
+type SearchParams = Promise<{ account?: string }>;
+
+export default async function LedgerPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
   let initial = null;
   let accounts: Awaited<ReturnType<typeof listLedgerAccounts>> = [];
   let loadError: string | null = null;
 
   try {
     accounts = await listLedgerAccounts();
-    initial = await getLedger({
-      accountCode: accounts.find((a) => a.code === "1002")?.code ?? accounts[0]?.code,
-    });
+    const requested = params.account?.trim();
+    const accountCode =
+      (requested && accounts.find((a) => a.code === requested)?.code) ||
+      accounts.find((a) => a.code === "1002")?.code ||
+      accounts[0]?.code;
+    initial = await getLedger({ accountCode });
   } catch (error) {
     loadError =
       error instanceof Error

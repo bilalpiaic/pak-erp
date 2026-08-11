@@ -4,11 +4,13 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { AccountFormModal } from "@/components/accounts/AccountFormModal";
 import { PrintButton } from "@/components/print/PrintButton";
+import { OriginLink } from "@/components/ui/OriginLink";
 import {
   ACCOUNT_TYPES,
   type AccountDTO,
   type AccountGroupSection,
 } from "@/lib/accounts/types";
+import { accountLedgerHref } from "@/lib/links";
 
 const TYPE_COLORS: Record<string, string> = {
   Asset: "#3b82f6",
@@ -305,9 +307,11 @@ function GroupRows({
           className="border-b border-[var(--border)]/60 hover:bg-[rgba(26,37,64,0.45)]"
         >
           <td className="px-3 py-2 font-mono text-xs font-semibold text-[var(--accent)]">
-            {account.code}
+            <OriginLink href={accountLedgerHref(account.code)}>{account.code}</OriginLink>
           </td>
-          <td className="px-3 py-2 text-sm font-medium">{account.name}</td>
+          <td className="px-3 py-2 text-sm font-medium">
+            <OriginLink href={accountLedgerHref(account.code)}>{account.name}</OriginLink>
+          </td>
           <td className="px-3 py-2 text-xs text-[var(--muted)]">{account.accountGroup}</td>
           <td className="px-3 py-2">
             <span

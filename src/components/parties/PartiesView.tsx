@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
+import { partyKindFromType, partyLedgerHref } from "@/lib/links";
 import {
   PARTY_TYPES,
   type PartyDTO,
@@ -13,6 +16,7 @@ import {
 
 type PartiesViewProps = {
   initialParties: PartyDTO[];
+  openPartyId?: string | null;
   loadError?: string | null;
 };
 
@@ -29,7 +33,12 @@ const EMPTY: PartyInput = {
   whtStatus: "",
 };
 
-export function PartiesView({ initialParties, loadError = null }: PartiesViewProps) {
+export function PartiesView({
+  initialParties,
+  openPartyId = null,
+  loadError = null,
+}: PartiesViewProps) {
+  const router = useRouter();
   const [parties, setParties] = useState(initialParties);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("All");
@@ -39,6 +48,26 @@ export function PartiesView({ initialParties, loadError = null }: PartiesViewPro
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<PartyInput>(EMPTY);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!openPartyId) return;
+    const party = initialParties.find((p) => p.id === openPartyId);
+    if (!party) return;
+    setCreating(false);
+    setEditing(party);
+    setForm({
+      name: party.name,
+      ntn: party.ntn ?? "",
+      partyType: party.partyType,
+      phone: party.phone ?? "",
+      email: party.email ?? "",
+      address: party.address ?? "",
+      isActive: party.isActive,
+      outstandingDays: party.outstandingDays,
+      outstandingAmount: party.outstandingAmount,
+      whtStatus: party.whtStatus ?? "",
+    });
+  }, [openPartyId, initialParties]);
 
   const filtered = useMemo(() => {
     return parties.filter((p) => {
@@ -100,6 +129,9 @@ export function PartiesView({ initialParties, loadError = null }: PartiesViewPro
   function closeForm() {
     setCreating(false);
     setEditing(null);
+    if (openPartyId) {
+      router.replace("/parties");
+    }
   }
 
   async function save() {
@@ -323,7 +355,13 @@ export function PartiesView({ initialParties, loadError = null }: PartiesViewPro
             ) : (
               filtered.map((party) => (
                 <tr key={party.id}>
-                  <td className="font-medium">{party.name}</td>
+                  <td className="font-medium">
+                    <OriginLink
+                      href={partyLedgerHref(party.id, partyKindFromType(party.partyType))}
+                    >
+                      {party.name}
+                    </OriginLink>
+                  </td>
                   <td className="text-[var(--muted)]">{party.ntn ?? "—"}</td>
                   <td>{party.partyType}</td>
                   <td className="text-right font-mono">

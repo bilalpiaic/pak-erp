@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { OriginLink } from "@/components/ui/OriginLink";
 import { VoucherForm } from "@/components/vouchers/VoucherForm";
 import type { AccountDTO } from "@/lib/accounts/types";
 import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
+import { partyLedgerHref, voucherHref } from "@/lib/links";
 import type { PartyDTO } from "@/lib/parties/types";
 import {
   VOUCHER_TYPES,
@@ -19,6 +22,8 @@ type VoucherEntryProps = {
   accounts: AccountDTO[];
   parties?: PartyDTO[];
   company?: CompanyDTO | null;
+  openVoucher?: VoucherDTO | null;
+  openVoucherId?: string | null;
   loadError?: string | null;
 };
 
@@ -44,8 +49,11 @@ export function VoucherEntry({
   accounts,
   parties = [],
   company = null,
+  openVoucher = null,
+  openVoucherId = null,
   loadError = null,
 }: VoucherEntryProps) {
+  const router = useRouter();
   const [vouchers, setVouchers] = useState(initialVouchers);
   const [view, setView] = useState<ViewState>({ kind: "list" });
   const [search, setSearch] = useState("");
@@ -54,6 +62,23 @@ export function VoucherEntry({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const targetId = openVoucher?.id ?? openVoucherId;
+    const target =
+      openVoucher ??
+      (openVoucherId
+        ? initialVouchers.find((v) => v.id === openVoucherId) ?? null
+        : null);
+    if (!target || !targetId) return;
+    setView({
+      kind: "form",
+      mode: target.status === "DRAFT" ? "edit" : "view",
+      voucherType: target.voucherType,
+      voucherNo: target.voucherNo,
+      voucher: target,
+    });
+  }, [openVoucher?.id, openVoucherId]); // eslint-disable-line react-hooks/exhaustive-deps -- open by id from deep link
 
   const filtered = useMemo(() => {
     return vouchers.filter((voucher) => {
@@ -140,7 +165,12 @@ export function VoucherEntry({
         parties={parties}
         company={company}
         autoPrint={Boolean(view.autoPrint)}
-        onBack={() => setView({ kind: "list" })}
+        onBack={() => {
+          setView({ kind: "list" });
+          if (openVoucher || openVoucherId) {
+            router.replace("/vouchers");
+          }
+        }}
         onSaved={(voucher) => {
           setMessage(
             voucher.status === "POSTED"
@@ -254,7 +284,7 @@ export function VoucherEntry({
                     className="border-b border-[var(--border)]/60 hover:bg-[rgba(26,37,64,0.45)]"
                   >
                     <td className="px-3 py-2 font-semibold text-[var(--accent)]">
-                      {voucher.voucherNo}
+                      <OriginLink href={voucherHref(voucher.id)}>{voucher.voucherNo}</OriginLink>
                     </td>
                     <td className="px-3 py-2 text-xs">{voucher.voucherDate}</td>
                     <td className="px-3 py-2">
@@ -262,7 +292,22 @@ export function VoucherEntry({
                         {voucher.voucherType}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-sm">{voucher.partyName || "—"}</td>
+                    <td className="px-3 py-2 text-sm">
+                      {voucher.partyId && voucher.partyName ? (
+                        <OriginLink
+                          href={partyLedgerHref(
+                            voucher.partyId,
+                            voucher.voucherType === "BPV" || voucher.voucherType === "CPV"
+                              ? "creditor"
+                              : "debtor",
+                          )}
+                        >
+                          {voucher.partyName}
+                        </OriginLink>
+                      ) : (
+                        voucher.partyName || "—"
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-xs text-[var(--muted)]">
                       {voucher.referenceNo || "—"}
                     </td>

@@ -23,6 +23,7 @@ export type DashboardRecentVoucher = {
   date: string;
   voucherNo: string;
   voucherType: VoucherTypeValue;
+  partyId: string | null;
   partyName: string | null;
   narration: string | null;
   amount: string;
@@ -119,6 +120,7 @@ export async function getDashboard(): Promise<DashboardResult> {
       date: v.voucherDate.toISOString().slice(0, 10),
       voucherNo: v.voucherNo,
       voucherType: v.voucherType as VoucherTypeValue,
+      partyId: v.partyId?.toString() ?? null,
       partyName: v.partyName,
       narration: v.narration,
       amount: moneyFromCents(amountCents),

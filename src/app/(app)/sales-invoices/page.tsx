@@ -2,14 +2,22 @@ import { SalesInvoiceEntry } from "@/components/sales-invoices/SalesInvoiceEntry
 import { PageShell } from "@/components/ui/PageShell";
 import { getPrimaryCompany } from "@/lib/company/service";
 import { listParties } from "@/lib/parties/service";
-import { listSalesInvoices } from "@/lib/sales-invoices/service";
+import { getSalesInvoice, listSalesInvoices } from "@/lib/sales-invoices/service";
 
 export const dynamic = "force-dynamic";
 
-export default async function SalesInvoicesPage() {
+type SearchParams = Promise<{ id?: string }>;
+
+export default async function SalesInvoicesPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
   let invoices: Awaited<ReturnType<typeof listSalesInvoices>>["invoices"] = [];
   let parties: Awaited<ReturnType<typeof listParties>>["parties"] = [];
   let company: Awaited<ReturnType<typeof getPrimaryCompany>> = null;
+  let openInvoice: Awaited<ReturnType<typeof getSalesInvoice>> = null;
   let loadError: string | null = null;
 
   try {
@@ -21,6 +29,9 @@ export default async function SalesInvoicesPage() {
     invoices = invoiceData.invoices;
     parties = partyData.parties;
     company = companyData;
+    if (params.id?.trim()) {
+      openInvoice = await getSalesInvoice(params.id.trim());
+    }
   } catch (error) {
     loadError =
       error instanceof Error
@@ -37,6 +48,7 @@ export default async function SalesInvoicesPage() {
         initialInvoices={invoices}
         parties={parties}
         company={company}
+        openInvoice={openInvoice}
         loadError={loadError}
       />
     </PageShell>

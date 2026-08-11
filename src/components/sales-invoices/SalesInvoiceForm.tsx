@@ -434,6 +434,7 @@ export function SalesInvoiceForm({
           company={company}
           invoiceNo={invoiceNo}
           invoiceDate={invoiceDate}
+          partyId={partyId || selectedParty?.id || initial?.partyId || null}
           partyName={
             selectedParty?.name ??
             savedInvoice?.partyName ??
@@ -446,6 +447,7 @@ export function SalesInvoiceForm({
           poNumber={poNumber}
           narration={narration}
           status={savedInvoice?.status ?? initial?.status ?? (mode === "create" ? "DRAFT" : null)}
+          voucherId={savedInvoice?.voucherId ?? initial?.voucherId ?? null}
           voucherNo={savedInvoice?.voucherNo ?? initial?.voucherNo ?? null}
           lines={lines
             .filter((line) => line.item.trim() || line.quantity || line.rate)
