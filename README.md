@@ -20,7 +20,7 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 ### Phase 2 — Database
 
 - Prisma migration for companies, fiscal years, accounts, vouchers, voucher lines, audit logs
-- Seed data: company, FY, chart of accounts, parties (no demo vouchers — blank voucher ledger)
+- Seed data: minimal company + FY + chart of accounts only (no parties / vouchers / demo transactions)
 - Company Settings UI reads/writes PostgreSQL
 - `/api/company` and `/api/health`
 
@@ -145,7 +145,7 @@ After env vars are saved, open the latest deployment → **Redeploy**, or push a
 | `npm run db:setup` | `migrate deploy` + seed |
 | `npm run prisma:generate` | Generate Prisma Client |
 | `npm run prisma:migrate` | Create/apply migrations (dev) |
-| `npm run prisma:seed` | Re-seed Gill Embroidery sample data |
+| `npm run prisma:seed` | Re-seed company + FY + chart of accounts only |
 
 ## Environment variables
 

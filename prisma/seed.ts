@@ -4,12 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 import { PrismaClient } from "../src/generated/prisma/client";
-import {
-  SEED_ACCOUNTS,
-  SEED_COMPANY,
-  SEED_FISCAL_YEAR,
-  SEED_PARTIES,
-} from "./seed-data";
+import { SEED_ACCOUNTS, SEED_COMPANY, SEED_FISCAL_YEAR } from "./seed-data";
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -21,10 +16,11 @@ async function main() {
   const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
   try {
-    console.log("Seeding GarmentLoop ERP (no demo vouchers)…");
+    console.log("Seeding GarmentLoop ERP (COA only — no demo parties/vouchers)…");
 
     // Clear in dependency order for idempotent re-seed.
     await prisma.auditLog.deleteMany();
+    await prisma.voucherAttachment.deleteMany();
     await prisma.voucherLine.deleteMany();
     await prisma.voucher.deleteMany();
     await prisma.party.deleteMany();
@@ -48,31 +44,6 @@ async function main() {
         companyId: company.id,
         ...account,
       })),
-    });
-
-    // Parties master only — outstanding starts at zero (blank books).
-    await prisma.party.createMany({
-      data: SEED_PARTIES.map((party) => ({
-        companyId: company.id,
-        name: party.name,
-        ntn: party.ntn,
-        partyType: party.partyType,
-        outstandingDays: null,
-        outstandingAmount: "0.00",
-        whtStatus: party.whtStatus,
-        isActive: true,
-      })),
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        companyId: company.id,
-        actor: "seed",
-        action: "CREATE",
-        entity: "Company",
-        recordId: company.id.toString(),
-        newValue: { name: company.name },
-      },
     });
 
     const counts = {
