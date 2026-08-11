@@ -52,6 +52,8 @@ type AggregateOptions = {
   /** Strict upper bound (voucher_date < before) — for opening balances */
   before?: string | null;
   accountCode?: string | null;
+  /** When set, only vouchers linked to this party */
+  partyId?: string | null;
 };
 
 /**
@@ -79,6 +81,7 @@ export async function aggregatePostedBalances(
       voucher: {
         companyId,
         status: "POSTED",
+        ...(options.partyId ? { partyId: BigInt(options.partyId) } : {}),
         ...(from || to || before
           ? {
               voucherDate: {

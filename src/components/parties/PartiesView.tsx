@@ -350,6 +350,14 @@ export function PartiesView({ initialParties, loadError = null }: PartiesViewPro
                     >
                       Edit
                     </button>
+                    <a
+                      href={`/party-ledger?partyId=${party.id}&kind=${
+                        party.partyType === "Creditor" ? "creditor" : "debtor"
+                      }`}
+                      className="btn-secondary mr-1 inline-block px-2 py-1 no-underline"
+                    >
+                      Ledger
+                    </a>
                     <button
                       type="button"
                       className="btn-secondary px-2 py-1"

@@ -175,6 +175,10 @@ a {
     display: none !important;
   }
 
+  .print-only {
+    display: block !important;
+  }
+
   body {
     background: #fff !important;
     color: #000 !important;
@@ -188,6 +192,21 @@ a {
   .data-table td {
     border-color: #ccc !important;
   }
+
+  .print-letterhead,
+  .sales-invoice-print {
+    border: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .print-letterhead * {
+    color: #000 !important;
+  }
+}
+
+.print-only {
+  display: none;
 }
 
 @media (max-width: 767px) {

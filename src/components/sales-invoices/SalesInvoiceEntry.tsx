@@ -4,12 +4,14 @@ import { useMemo, useState, useTransition } from "react";
 
 import { SalesInvoiceForm } from "@/components/sales-invoices/SalesInvoiceForm";
 import { formatCurrency } from "@/lib/formatting/money";
+import type { CompanyDTO } from "@/lib/company/types";
 import type { PartyDTO } from "@/lib/parties/types";
 import type { SalesInvoiceDTO } from "@/lib/sales-invoices/types";
 
 type SalesInvoiceEntryProps = {
   initialInvoices: SalesInvoiceDTO[];
   parties: PartyDTO[];
+  company: CompanyDTO | null;
   loadError?: string | null;
 };
 
@@ -31,6 +33,7 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 export function SalesInvoiceEntry({
   initialInvoices,
   parties,
+  company,
   loadError = null,
 }: SalesInvoiceEntryProps) {
   const [invoices, setInvoices] = useState(initialInvoices);
@@ -119,6 +122,7 @@ export function SalesInvoiceEntry({
         invoiceNo={view.invoiceNo}
         initial={view.invoice}
         parties={parties}
+        company={company}
         onBack={() => setView({ kind: "list" })}
         onSaved={(invoice) => {
           setMessage(
@@ -248,6 +252,20 @@ export function SalesInvoiceEntry({
                           className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
                         >
                           Open
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setView({
+                              kind: "form",
+                              mode: "view",
+                              invoiceNo: invoice.invoiceNo,
+                              invoice,
+                            })
+                          }
+                          className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
+                        >
+                          Print
                         </button>
                         {invoice.status === "POSTED" ? (
                           <button

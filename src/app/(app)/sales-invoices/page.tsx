@@ -1,5 +1,6 @@
 import { SalesInvoiceEntry } from "@/components/sales-invoices/SalesInvoiceEntry";
 import { PageShell } from "@/components/ui/PageShell";
+import { getPrimaryCompany } from "@/lib/company/service";
 import { listParties } from "@/lib/parties/service";
 import { listSalesInvoices } from "@/lib/sales-invoices/service";
 
@@ -8,15 +9,18 @@ export const dynamic = "force-dynamic";
 export default async function SalesInvoicesPage() {
   let invoices: Awaited<ReturnType<typeof listSalesInvoices>>["invoices"] = [];
   let parties: Awaited<ReturnType<typeof listParties>>["parties"] = [];
+  let company: Awaited<ReturnType<typeof getPrimaryCompany>> = null;
   let loadError: string | null = null;
 
   try {
-    const [invoiceData, partyData] = await Promise.all([
+    const [invoiceData, partyData, companyData] = await Promise.all([
       listSalesInvoices(),
       listParties({ active: "active" }),
+      getPrimaryCompany(),
     ]);
     invoices = invoiceData.invoices;
     parties = partyData.parties;
+    company = companyData;
   } catch (error) {
     loadError =
       error instanceof Error
@@ -32,6 +36,7 @@ export default async function SalesInvoicesPage() {
       <SalesInvoiceEntry
         initialInvoices={invoices}
         parties={parties}
+        company={company}
         loadError={loadError}
       />
     </PageShell>

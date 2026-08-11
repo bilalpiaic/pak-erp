@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 
 import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
+import { SalesInvoicePrint } from "@/components/sales-invoices/SalesInvoicePrint";
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
+import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { PartyDTO } from "@/lib/parties/types";
 import type {
@@ -25,6 +27,7 @@ type SalesInvoiceFormProps = {
   invoiceNo: string;
   initial?: SalesInvoiceDTO | null;
   parties: PartyDTO[];
+  company: CompanyDTO | null;
   onBack: () => void;
   onSaved: (invoice: SalesInvoiceDTO) => void;
 };
@@ -49,6 +52,7 @@ export function SalesInvoiceForm({
   invoiceNo,
   initial,
   parties: initialParties,
+  company,
   onBack,
   onSaved,
 }: SalesInvoiceFormProps) {
@@ -206,7 +210,7 @@ export function SalesInvoiceForm({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <button
             type="button"
@@ -222,216 +226,240 @@ export function SalesInvoiceForm({
             Posts Dr Trade Debtors (1010) / Cr Sales (4001) to the customer ledger.
           </p>
         </div>
-        {!readOnly ? (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => void save("draft")}
-              className="border border-[var(--border-strong)] bg-white px-3 py-2 text-[11px] font-semibold"
-            >
-              {pending ? "Saving…" : "Save Draft"}
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => void save("post")}
-              className="border border-[var(--accent)] bg-[var(--nav-active)] px-3 py-2 text-[11px] font-semibold text-[var(--accent)]"
-            >
-              {pending ? "Posting…" : "Post to Ledger"}
-            </button>
-          </div>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => window.print()}
+          >
+            Print
+          </button>
+          {!readOnly ? (
+            <>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => void save("draft")}
+                className="border border-[var(--border-strong)] bg-white px-3 py-2 text-[11px] font-semibold"
+              >
+                {pending ? "Saving…" : "Save Draft"}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => void save("post")}
+                className="border border-[var(--accent)] bg-[var(--nav-active)] px-3 py-2 text-[11px] font-semibold text-[var(--accent)]"
+              >
+                {pending ? "Posting…" : "Post to Ledger"}
+              </button>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {error ? (
-        <p className="text-sm text-[var(--danger)]" role="alert">
+        <p className="no-print text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
 
-      <div className="grid gap-3 border border-[var(--border)] bg-[var(--panel)] p-4 md:grid-cols-2 lg:grid-cols-4">
-        <label className="block text-xs">
-          <span className="mb-1 block text-[var(--muted-strong)]">Invoice No.</span>
-          <input className="field-input w-full" value={invoiceNo} disabled />
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-[var(--muted-strong)]">Date</span>
-          <input
-            type="date"
-            className="field-input w-full"
-            value={invoiceDate}
-            disabled={readOnly}
-            onChange={(e) => setInvoiceDate(e.target.value)}
-          />
-        </label>
-        <div className="block text-xs md:col-span-2">
-          <div className="mb-1 flex items-center justify-between gap-2 text-[var(--muted-strong)]">
-            <span>Party (Customer / Debtor)</span>
-            {!readOnly ? (
-              <button
-                type="button"
-                onClick={() => setShowPartyModal(true)}
-                className="text-[10px] font-semibold text-[var(--accent)] hover:underline"
-              >
-                + New party
-              </button>
-            ) : null}
-          </div>
-          <select
-            className="field-input w-full"
-            value={partyId}
-            disabled={readOnly}
-            onChange={(e) => setPartyId(e.target.value)}
-          >
-            <option value="">Select party…</option>
-            {debtorParties.map((party) => (
-              <option key={party.id} value={party.id}>
-                {party.name}
-                {party.ntn ? ` (${party.ntn})` : ""}
-              </option>
-            ))}
-          </select>
-          {selectedParty?.ntn ? (
-            <span className="mt-1 block text-[10px] text-[var(--muted)]">
-              NTN {selectedParty.ntn}
-            </span>
-          ) : null}
-        </div>
-        <label className="block text-xs">
-          <span className="mb-1 block text-[var(--muted-strong)]">PO #</span>
-          <input
-            className="field-input w-full"
-            value={poNumber}
-            disabled={readOnly}
-            onChange={(e) => setPoNumber(e.target.value)}
-            placeholder="Customer PO number"
-          />
-        </label>
-        <label className="block text-xs md:col-span-3">
-          <span className="mb-1 block text-[var(--muted-strong)]">Narration</span>
-          <input
-            className="field-input w-full"
-            value={narration}
-            disabled={readOnly}
-            onChange={(e) => setNarration(e.target.value)}
-            placeholder="Optional invoice note"
-          />
-        </label>
-      </div>
-
-      <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
-        <table className="w-full min-w-[780px] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
-              <th className="bg-[var(--table-head)] px-3 py-2">Item</th>
-              <th className="bg-[var(--table-head)] px-3 py-2">Detail</th>
-              <th className="bg-[var(--table-head)] px-3 py-2 text-right">Quantity</th>
-              <th className="bg-[var(--table-head)] px-3 py-2 text-right">Rate</th>
-              <th className="bg-[var(--table-head)] px-3 py-2 text-right">Amount</th>
-              {!readOnly ? (
-                <th className="bg-[var(--table-head)] px-3 py-2"> </th>
-              ) : null}
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line, index) => (
-              <tr key={index} className="border-b border-[var(--border)]/60">
-                <td className="px-2 py-1.5">
-                  <input
-                    className="field-input w-full min-w-[120px]"
-                    value={line.item}
-                    disabled={readOnly}
-                    onChange={(e) => updateLine(index, "item", e.target.value)}
-                    placeholder="Item"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input
-                    className="field-input w-full min-w-[160px]"
-                    value={line.detail}
-                    disabled={readOnly}
-                    onChange={(e) => updateLine(index, "detail", e.target.value)}
-                    placeholder="Detail"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input
-                    className="field-input w-full min-w-[90px] text-right font-mono"
-                    value={line.quantity}
-                    disabled={readOnly}
-                    onChange={(e) => updateLine(index, "quantity", e.target.value)}
-                    placeholder="0"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input
-                    className="field-input w-full min-w-[100px] text-right font-mono"
-                    value={line.rate}
-                    disabled={readOnly}
-                    onChange={(e) => updateLine(index, "rate", e.target.value)}
-                    placeholder="0.00"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input
-                    className="field-input w-full min-w-[110px] text-right font-mono"
-                    value={line.amount}
-                    disabled
-                    readOnly
-                  />
-                </td>
-                {!readOnly ? (
-                  <td className="px-2 py-1.5">
-                    <button
-                      type="button"
-                      className="text-[11px] text-[var(--danger)]"
-                      onClick={() =>
-                        setLines((prev) =>
-                          prev.length <= 1 ? [emptyLine()] : prev.filter((_, i) => i !== index),
-                        )
-                      }
-                    >
-                      Remove
-                    </button>
-                  </td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-[var(--border)]">
-              <td colSpan={4} className="px-3 py-2 text-right text-xs font-semibold">
-                Total
-              </td>
-              <td className="px-3 py-2 text-right font-mono text-sm font-semibold">
-                {formatCurrency(centsToDecimalString(totalCents))}
-              </td>
-              {!readOnly ? <td /> : null}
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
       {!readOnly ? (
-        <button
-          type="button"
-          onClick={() => setLines((prev) => [...prev, emptyLine()])}
-          className="border border-[var(--border-strong)] bg-white px-3 py-2 text-[11px] font-semibold"
-        >
-          + Add line
-        </button>
+        <>
+          <div className="no-print grid gap-3 border border-[var(--border)] bg-[var(--panel)] p-4 md:grid-cols-2 lg:grid-cols-4">
+            <label className="block text-xs">
+              <span className="mb-1 block text-[var(--muted-strong)]">Invoice No.</span>
+              <input className="field-input w-full" value={invoiceNo} disabled />
+            </label>
+            <label className="block text-xs">
+              <span className="mb-1 block text-[var(--muted-strong)]">Date</span>
+              <input
+                type="date"
+                className="field-input w-full"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+              />
+            </label>
+            <div className="block text-xs md:col-span-2">
+              <div className="mb-1 flex items-center justify-between gap-2 text-[var(--muted-strong)]">
+                <span>Party (Customer / Debtor)</span>
+                <button
+                  type="button"
+                  onClick={() => setShowPartyModal(true)}
+                  className="text-[10px] font-semibold text-[var(--accent)] hover:underline"
+                >
+                  + New party
+                </button>
+              </div>
+              <select
+                className="field-input w-full"
+                value={partyId}
+                onChange={(e) => setPartyId(e.target.value)}
+              >
+                <option value="">Select party…</option>
+                {debtorParties.map((party) => (
+                  <option key={party.id} value={party.id}>
+                    {party.name}
+                    {party.ntn ? ` (${party.ntn})` : ""}
+                  </option>
+                ))}
+              </select>
+              {selectedParty?.ntn ? (
+                <span className="mt-1 block text-[10px] text-[var(--muted)]">
+                  NTN {selectedParty.ntn}
+                </span>
+              ) : null}
+            </div>
+            <label className="block text-xs">
+              <span className="mb-1 block text-[var(--muted-strong)]">PO #</span>
+              <input
+                className="field-input w-full"
+                value={poNumber}
+                onChange={(e) => setPoNumber(e.target.value)}
+                placeholder="Customer PO number"
+              />
+            </label>
+            <label className="block text-xs md:col-span-3">
+              <span className="mb-1 block text-[var(--muted-strong)]">Narration</span>
+              <input
+                className="field-input w-full"
+                value={narration}
+                onChange={(e) => setNarration(e.target.value)}
+                placeholder="Optional invoice note"
+              />
+            </label>
+          </div>
+
+          <div className="no-print overflow-auto border border-[var(--border)] bg-[var(--panel)]">
+            <table className="w-full min-w-[780px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
+                  <th className="bg-[var(--table-head)] px-3 py-2">Item</th>
+                  <th className="bg-[var(--table-head)] px-3 py-2">Detail</th>
+                  <th className="bg-[var(--table-head)] px-3 py-2 text-right">Quantity</th>
+                  <th className="bg-[var(--table-head)] px-3 py-2 text-right">Rate</th>
+                  <th className="bg-[var(--table-head)] px-3 py-2 text-right">Amount</th>
+                  <th className="bg-[var(--table-head)] px-3 py-2"> </th>
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((line, index) => (
+                  <tr key={index} className="border-b border-[var(--border)]/60">
+                    <td className="px-2 py-1.5">
+                      <input
+                        className="field-input w-full min-w-[120px]"
+                        value={line.item}
+                        onChange={(e) => updateLine(index, "item", e.target.value)}
+                        placeholder="Item"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        className="field-input w-full min-w-[160px]"
+                        value={line.detail}
+                        onChange={(e) => updateLine(index, "detail", e.target.value)}
+                        placeholder="Detail"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        className="field-input w-full min-w-[90px] text-right font-mono"
+                        value={line.quantity}
+                        onChange={(e) => updateLine(index, "quantity", e.target.value)}
+                        placeholder="0"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        className="field-input w-full min-w-[100px] text-right font-mono"
+                        value={line.rate}
+                        onChange={(e) => updateLine(index, "rate", e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        className="field-input w-full min-w-[110px] text-right font-mono"
+                        value={line.amount}
+                        disabled
+                        readOnly
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <button
+                        type="button"
+                        className="text-[11px] text-[var(--danger)]"
+                        onClick={() =>
+                          setLines((prev) =>
+                            prev.length <= 1
+                              ? [emptyLine()]
+                              : prev.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-[var(--border)]">
+                  <td colSpan={4} className="px-3 py-2 text-right text-xs font-semibold">
+                    Total
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-sm font-semibold">
+                    {formatCurrency(centsToDecimalString(totalCents))}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setLines((prev) => [...prev, emptyLine()])}
+            className="no-print border border-[var(--border-strong)] bg-white px-3 py-2 text-[11px] font-semibold"
+          >
+            + Add line
+          </button>
+        </>
       ) : null}
 
-      {initial?.status || savedInvoice?.status ? (
-        <p className="text-xs text-[var(--muted)]">
-          Status:{" "}
-          <strong>{savedInvoice?.status ?? initial?.status}</strong>
-          {(savedInvoice?.voucherNo ?? initial?.voucherNo)
-            ? ` · Linked voucher ${(savedInvoice?.voucherNo ?? initial?.voucherNo)!}`
-            : null}
-        </p>
-      ) : null}
+      <div className={readOnly ? "" : "print-only"}>
+        <SalesInvoicePrint
+          company={company}
+          invoiceNo={invoiceNo}
+          invoiceDate={invoiceDate}
+          partyName={
+            selectedParty?.name ??
+            savedInvoice?.partyName ??
+            initial?.partyName ??
+            ""
+          }
+          partyNtn={
+            selectedParty?.ntn ?? savedInvoice?.partyNtn ?? initial?.partyNtn ?? null
+          }
+          poNumber={poNumber}
+          narration={narration}
+          status={savedInvoice?.status ?? initial?.status ?? (mode === "create" ? "DRAFT" : null)}
+          voucherNo={savedInvoice?.voucherNo ?? initial?.voucherNo ?? null}
+          lines={lines
+            .filter((line) => line.item.trim() || line.quantity || line.rate)
+            .map((line) => ({
+              item: line.item,
+              detail: line.detail,
+              quantity: line.quantity,
+              rate: line.rate,
+              amount: line.amount || computeAmount(line.quantity, line.rate),
+            }))}
+          totalAmount={
+            savedInvoice?.totalAmount ??
+            initial?.totalAmount ??
+            centsToDecimalString(totalCents)
+          }
+        />
+      </div>
 
       {showPartyModal ? (
         <PartyCreateModal
