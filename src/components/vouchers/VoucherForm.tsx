@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { AccountFormModal } from "@/components/accounts/AccountFormModal";
+import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
 import { VoucherAttachmentsPanel } from "@/components/vouchers/VoucherAttachmentsPanel";
 import { centsToDecimalString, isBalanced, sumCents, toCents } from "@/lib/accounting/money";
 import type { AccountDTO } from "@/lib/accounts/types";
@@ -41,20 +43,28 @@ export function VoucherForm({
   voucherType,
   voucherNo,
   initial,
-  accounts,
-  parties = [],
+  accounts: initialAccounts,
+  parties: initialParties = [],
   onBack,
   onSaved,
 }: VoucherFormProps) {
   const readOnly =
     mode === "view" || initial?.status === "POSTED" || initial?.status === "CANCELLED";
+
+  const [partyOptions, setPartyOptions] = useState(initialParties);
+  const [accountOptions, setAccountOptions] = useState(initialAccounts);
+  const [showPartyModal, setShowPartyModal] = useState(false);
+  const [accountModalLine, setAccountModalLine] = useState<number | null>(null);
+
   const activeAccounts = useMemo(
-    () => accounts.filter((a) => a.isActive).sort((a, b) => a.code.localeCompare(b.code)),
-    [accounts],
+    () =>
+      accountOptions.filter((a) => a.isActive).sort((a, b) => a.code.localeCompare(b.code)),
+    [accountOptions],
   );
   const activeParties = useMemo(
-    () => parties.filter((p) => p.isActive).sort((a, b) => a.name.localeCompare(b.name)),
-    [parties],
+    () =>
+      partyOptions.filter((p) => p.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    [partyOptions],
   );
 
   const [voucherDate, setVoucherDate] = useState(initial?.voucherDate ?? todayIso());
@@ -129,6 +139,26 @@ export function VoucherForm({
       setPartyName(party.name);
       setPartyNtn(party.ntn ?? "");
     }
+  }
+
+  function handlePartyCreated(party: PartyDTO) {
+    setPartyOptions((prev) =>
+      prev.some((p) => p.id === party.id) ? prev : [...prev, party],
+    );
+    setPartyId(party.id);
+    setPartyName(party.name);
+    setPartyNtn(party.ntn ?? "");
+    setShowPartyModal(false);
+  }
+
+  function handleAccountCreated(account: AccountDTO) {
+    setAccountOptions((prev) =>
+      prev.some((a) => a.id === account.id) ? prev : [...prev, account],
+    );
+    if (accountModalLine !== null && accountModalLine >= 0) {
+      updateLine(accountModalLine, "accountId", account.id);
+    }
+    setAccountModalLine(null);
   }
 
   async function save(action: "draft" | "post") {
@@ -251,10 +281,21 @@ export function VoucherForm({
               className="field-input"
             />
           </label>
-          <label className="block md:col-span-1">
-            <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-              Party (master)
-            </span>
+          <div className="block md:col-span-1">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                Party (master)
+              </span>
+              {!readOnly ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPartyModal(true)}
+                  className="text-[10px] font-semibold text-[var(--accent)] hover:underline"
+                >
+                  + New party
+                </button>
+              ) : null}
+            </div>
             <select
               value={partyId}
               disabled={readOnly}
@@ -268,7 +309,7 @@ export function VoucherForm({
                 </option>
               ))}
             </select>
-          </label>
+          </div>
           <label className="block md:col-span-1">
             <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
               Party Name
@@ -323,7 +364,20 @@ export function VoucherForm({
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
               <th className="px-3 py-2">#</th>
-              <th className="px-3 py-2">Account</th>
+              <th className="px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span>Account</span>
+                  {!readOnly ? (
+                    <button
+                      type="button"
+                      onClick={() => setAccountModalLine(-1)}
+                      className="normal-case tracking-normal text-[10px] font-semibold text-[var(--accent)] hover:underline"
+                    >
+                      + New account
+                    </button>
+                  ) : null}
+                </div>
+              </th>
               <th className="px-3 py-2 text-right">Debit (₨)</th>
               <th className="px-3 py-2 text-right">Credit (₨)</th>
               <th className="px-3 py-2">Line Narration</th>
@@ -332,7 +386,7 @@ export function VoucherForm({
           </thead>
           <tbody>
             {lines.map((line, index) => {
-              const account = accounts.find((a) => a.id === line.accountId);
+              const account = accountOptions.find((a) => a.id === line.accountId);
               return (
                 <tr key={index} className="border-b border-[var(--border)]/50">
                   <td className="px-3 py-2 text-xs text-[var(--muted-strong)]">{index + 1}</td>
@@ -345,18 +399,28 @@ export function VoucherForm({
                         <div className="text-xs text-[var(--muted)]">{account?.name}</div>
                       </div>
                     ) : (
-                      <select
-                        value={line.accountId}
-                        onChange={(e) => updateLine(index, "accountId", e.target.value)}
-                        className="field-input"
-                      >
-                        <option value="">-- Select --</option>
-                        {activeAccounts.map((accountOption) => (
-                          <option key={accountOption.id} value={accountOption.id}>
-                            {accountOption.code} — {accountOption.name}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={line.accountId}
+                          onChange={(e) => updateLine(index, "accountId", e.target.value)}
+                          className="field-input flex-1"
+                        >
+                          <option value="">-- Select --</option>
+                          {activeAccounts.map((accountOption) => (
+                            <option key={accountOption.id} value={accountOption.id}>
+                              {accountOption.code} — {accountOption.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          title="New account for this line"
+                          onClick={() => setAccountModalLine(index)}
+                          className="shrink-0 border border-[var(--border-strong)] bg-white px-2 py-2 text-[11px] font-semibold text-[var(--accent)]"
+                        >
+                          +
+                        </button>
+                      </div>
                     )}
                   </td>
                   <td className="px-3 py-2">
@@ -483,6 +547,22 @@ export function VoucherForm({
             {balanced ? "✓ Post Voucher" : "Post (Balance First)"}
           </button>
         </div>
+      ) : null}
+
+      {showPartyModal ? (
+        <PartyCreateModal
+          defaultPartyType="Both"
+          onClose={() => setShowPartyModal(false)}
+          onCreated={handlePartyCreated}
+        />
+      ) : null}
+
+      {accountModalLine !== null ? (
+        <AccountFormModal
+          mode="create"
+          onClose={() => setAccountModalLine(null)}
+          onSaved={handleAccountCreated}
+        />
       ) : null}
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { PartyDTO } from "@/lib/parties/types";
@@ -47,19 +48,22 @@ export function SalesInvoiceForm({
   mode,
   invoiceNo,
   initial,
-  parties,
+  parties: initialParties,
   onBack,
   onSaved,
 }: SalesInvoiceFormProps) {
   const readOnly =
     mode === "view" || initial?.status === "POSTED" || initial?.status === "CANCELLED";
 
+  const [partyOptions, setPartyOptions] = useState(initialParties);
+  const [showPartyModal, setShowPartyModal] = useState(false);
+
   const debtorParties = useMemo(
     () =>
-      parties
+      partyOptions
         .filter((p) => p.isActive && p.partyType !== "Creditor")
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [parties],
+    [partyOptions],
   );
 
   const [invoiceDate, setInvoiceDate] = useState(initial?.invoiceDate ?? todayIso());
@@ -83,6 +87,14 @@ export function SalesInvoiceForm({
 
   const totalCents = lines.reduce((sum, line) => sum + (toCents(line.amount) ?? 0), 0);
   const selectedParty = debtorParties.find((p) => p.id === partyId);
+
+  function handlePartyCreated(party: PartyDTO) {
+    setPartyOptions((prev) =>
+      prev.some((p) => p.id === party.id) ? prev : [...prev, party],
+    );
+    setPartyId(party.id);
+    setShowPartyModal(false);
+  }
 
   function updateLine(index: number, field: keyof LineDraft, value: string) {
     setLines((prev) => {
@@ -253,8 +265,19 @@ export function SalesInvoiceForm({
             onChange={(e) => setInvoiceDate(e.target.value)}
           />
         </label>
-        <label className="block text-xs md:col-span-2">
-          <span className="mb-1 block text-[var(--muted-strong)]">Party (Customer / Debtor)</span>
+        <div className="block text-xs md:col-span-2">
+          <div className="mb-1 flex items-center justify-between gap-2 text-[var(--muted-strong)]">
+            <span>Party (Customer / Debtor)</span>
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={() => setShowPartyModal(true)}
+                className="text-[10px] font-semibold text-[var(--accent)] hover:underline"
+              >
+                + New party
+              </button>
+            ) : null}
+          </div>
           <select
             className="field-input w-full"
             value={partyId}
@@ -274,7 +297,7 @@ export function SalesInvoiceForm({
               NTN {selectedParty.ntn}
             </span>
           ) : null}
-        </label>
+        </div>
         <label className="block text-xs">
           <span className="mb-1 block text-[var(--muted-strong)]">PO #</span>
           <input
@@ -408,6 +431,15 @@ export function SalesInvoiceForm({
             ? ` · Linked voucher ${(savedInvoice?.voucherNo ?? initial?.voucherNo)!}`
             : null}
         </p>
+      ) : null}
+
+      {showPartyModal ? (
+        <PartyCreateModal
+          defaultPartyType="Debtor"
+          allowedTypes={["Debtor", "Both"]}
+          onClose={() => setShowPartyModal(false)}
+          onCreated={handlePartyCreated}
+        />
       ) : null}
     </div>
   );
