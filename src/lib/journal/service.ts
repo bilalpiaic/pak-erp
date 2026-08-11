@@ -3,7 +3,7 @@ import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
 import { centsToDecimalString, sumCents, toCents } from "@/lib/accounting/money";
 import { DEFAULT_FY_START, parseIsoDate, todayIso } from "@/lib/accounting/dates";
-import { VOUCHER_TYPES, type VoucherTypeValue } from "@/lib/vouchers/types";
+import { ALL_VOUCHER_TYPES, type VoucherTypeValue } from "@/lib/vouchers/types";
 
 export type JournalQuery = {
   from?: string;
@@ -53,7 +53,7 @@ export async function getJournal(query: JournalQuery = {}): Promise<JournalResul
   const typeFilter =
     query.voucherType &&
     query.voucherType !== "All" &&
-    VOUCHER_TYPES.includes(query.voucherType as VoucherTypeValue)
+    (ALL_VOUCHER_TYPES as readonly string[]).includes(query.voucherType)
       ? (query.voucherType as VoucherTypeValue)
       : undefined;
 

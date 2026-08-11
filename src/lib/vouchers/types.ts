@@ -1,5 +1,7 @@
 export const VOUCHER_TYPES = ["BPV", "BRV", "CPV", "CRV", "JV"] as const;
-export type VoucherTypeValue = (typeof VOUCHER_TYPES)[number];
+export const ALL_VOUCHER_TYPES = ["BPV", "BRV", "CPV", "CRV", "JV", "SI"] as const;
+export type VoucherTypeValue = (typeof ALL_VOUCHER_TYPES)[number];
+export type ManualVoucherTypeValue = (typeof VOUCHER_TYPES)[number];
 
 export const VOUCHER_STATUSES = ["DRAFT", "POSTED", "CANCELLED"] as const;
 export type VoucherStatusValue = (typeof VOUCHER_STATUSES)[number];
@@ -10,6 +12,7 @@ export const VOUCHER_TYPE_LABELS: Record<VoucherTypeValue, string> = {
   CPV: "Cash Payment Voucher",
   CRV: "Cash Receipt Voucher",
   JV: "Journal Voucher",
+  SI: "Sales Invoice",
 };
 
 export type VoucherLineInput = {

@@ -113,10 +113,13 @@ export async function listVouchers(
   const where: Prisma.VoucherWhereInput = { companyId };
 
   if (query.voucherType && query.voucherType !== "All") {
-    if (!VOUCHER_TYPES.includes(query.voucherType as VoucherTypeValue)) {
+    if (!(VOUCHER_TYPES as readonly string[]).includes(query.voucherType)) {
       throw new Error("Invalid voucher type filter.");
     }
     where.voucherType = query.voucherType as VoucherType;
+  } else {
+    // Sales invoices are managed under /sales-invoices
+    where.voucherType = { not: "SI" };
   }
 
   if (query.status && query.status !== "All") {

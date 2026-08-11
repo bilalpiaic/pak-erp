@@ -72,6 +72,13 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Aging reports prefer party master balances
 - `/api/parties`, `/api/parties/:id`
 
+### Phase 10 — Sales Invoices
+
+- Sales invoice CRUD with Party, PO#, and lines (Item, Detail, Quantity, Rate, Amount)
+- Direct posting: Dr Trade Debtors (1010) / Cr Sales (4001) via linked SI voucher
+- Draft / post / cancel; party outstanding updated on post/cancel
+- `/api/sales-invoices`, `/api/sales-invoices/:id`, `/post`, `/cancel`
+
 
 The legacy single-file prototype lives in `legacy/index.html`.
 

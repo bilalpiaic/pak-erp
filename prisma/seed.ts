@@ -22,6 +22,8 @@ async function main() {
     await prisma.auditLog.deleteMany();
     await prisma.voucherAttachment.deleteMany();
     await prisma.voucherLine.deleteMany();
+    await prisma.salesInvoiceLine.deleteMany();
+    await prisma.salesInvoice.deleteMany();
     await prisma.voucher.deleteMany();
     await prisma.party.deleteMany();
     await prisma.account.deleteMany();
