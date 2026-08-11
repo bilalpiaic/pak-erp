@@ -193,7 +193,6 @@ a {
     border-color: #ccc !important;
   }
 
-  .print-letterhead,
   .sales-invoice-print,
   .voucher-print {
     border: none !important;
@@ -201,8 +200,9 @@ a {
     color: #000 !important;
   }
 
-  .print-letterhead * {
+  .origin-link {
     color: #000 !important;
+    text-decoration: underline;
   }
 }
 

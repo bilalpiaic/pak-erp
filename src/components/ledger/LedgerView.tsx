@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
 import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import type { LedgerResult } from "@/lib/ledger/service";
+import { partyLedgerHref, voucherHref } from "@/lib/links";
 
 type AccountOption = { code: string; name: string; accountType: string };
 
@@ -28,6 +30,14 @@ export function LedgerView({
   const [data, setData] = useState<LedgerResult | null>(initial);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!initial) return;
+    setAccount(initial.account.code);
+    setFrom(initial.from);
+    setTo(initial.to);
+    setData(initial);
+  }, [initial?.account.code, initial?.from, initial?.to]); // eslint-disable-line react-hooks/exhaustive-deps -- sync deep-linked account
 
   function load() {
     startTransition(async () => {
@@ -168,9 +178,24 @@ export function LedgerView({
                   data.transactions.map((txn, idx) => (
                     <tr key={`${txn.voucherId}-${idx}`}>
                       <td className="whitespace-nowrap">{txn.date}</td>
-                      <td className="font-mono text-[11px]">{txn.voucherNo}</td>
+                      <td className="font-mono text-[11px]">
+                        <OriginLink href={voucherHref(txn.voucherId)}>{txn.voucherNo}</OriginLink>
+                      </td>
                       <td>{txn.voucherType}</td>
-                      <td>{txn.partyName ?? "—"}</td>
+                      <td>
+                        {txn.partyId && txn.partyName ? (
+                          <OriginLink
+                            href={partyLedgerHref(
+                              txn.partyId,
+                              data.account.code === "2001" ? "creditor" : "debtor",
+                            )}
+                          >
+                            {txn.partyName}
+                          </OriginLink>
+                        ) : (
+                          (txn.partyName ?? "—")
+                        )}
+                      </td>
                       <td className="max-w-[240px] truncate text-[var(--muted)]">
                         {txn.narration ?? ""}
                       </td>

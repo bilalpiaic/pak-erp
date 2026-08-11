@@ -428,6 +428,7 @@ export async function getCashFlow(query: ReportQuery = {}) {
 /* ─── Aging ─── */
 
 type AgingParty = {
+  id: string | null;
   name: string;
   ntn: string | null;
   outstandingDays: number;
@@ -470,6 +471,7 @@ async function deriveAgingParties(
 
   if (master.length > 0) {
     return master.map((p) => ({
+      id: p.id.toString(),
       name: p.name,
       ntn: p.ntn,
       outstandingDays: p.outstandingDays ?? 0,
@@ -505,6 +507,7 @@ async function deriveAgingParties(
   });
 
   type Acc = {
+    id: string | null;
     name: string;
     ntn: string | null;
     amountCents: number;
@@ -522,6 +525,7 @@ async function deriveAgingParties(
     const hasWht = line.voucher.lines.some((l) => l.account.code === "2005");
 
     const current = byParty.get(party) ?? {
+      id: null,
       name: party,
       ntn: null,
       amountCents: 0,
@@ -537,6 +541,7 @@ async function deriveAgingParties(
   return [...byParty.values()]
     .filter((p) => p.amountCents > 0)
     .map((p) => ({
+      id: p.id,
       name: p.name,
       ntn: p.ntn,
       outstandingDays: daysBetween(p.oldestDate, asOf),
@@ -555,6 +560,7 @@ function buildAgingPayload(
     .map((p) => {
       const buckets = ageBuckets(p.outstandingDays, p.amountCents);
       return {
+        id: p.id,
         name: p.name,
         ntn: p.ntn,
         outstandingDays: p.outstandingDays,
@@ -594,6 +600,7 @@ function buildAgingPayload(
   return serialize({
     ...reportHeader(ctx, title),
     parties: rows.map((row) => ({
+      id: row.id,
       name: row.name,
       ntn: row.ntn,
       outstandingDays: row.outstandingDays,

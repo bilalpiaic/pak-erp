@@ -4,7 +4,14 @@ import { listParties } from "@/lib/parties/service";
 
 export const dynamic = "force-dynamic";
 
-export default async function PartiesPage() {
+type SearchParams = Promise<{ id?: string }>;
+
+export default async function PartiesPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
   let parties: Awaited<ReturnType<typeof listParties>>["parties"] = [];
   let loadError: string | null = null;
 
@@ -22,7 +29,11 @@ export default async function PartiesPage() {
       title="Parties"
       description="Debtors and creditors master with NTN/CNIC and WHT status for FBR-oriented aging and vouchers."
     >
-      <PartiesView initialParties={parties} loadError={loadError} />
+      <PartiesView
+        initialParties={parties}
+        openPartyId={params.id?.trim() || null}
+        loadError={loadError}
+      />
     </PageShell>
   );
 }

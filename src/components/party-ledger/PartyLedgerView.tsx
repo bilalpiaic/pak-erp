@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
-import { PrintLetterhead } from "@/components/print/PrintLetterhead";
+import { OriginLink } from "@/components/ui/OriginLink";
 import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { PartyDTO } from "@/lib/parties/types";
@@ -11,6 +11,7 @@ import type {
   PartyLedgerKind,
   PartyLedgerResult,
 } from "@/lib/party-ledger/service";
+import { accountLedgerHref, partyMasterHref, voucherHref } from "@/lib/links";
 
 type PartyLedgerViewProps = {
   parties: PartyDTO[];
@@ -152,18 +153,23 @@ export function PartyLedgerView({
 
       {data ? (
         <div className="border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
-          <PrintLetterhead
-            company={data.company}
-            title={data.kind === "debtor" ? "Debtor Ledger" : "Creditor Ledger"}
-            subtitle={`${data.from} to ${data.to}`}
-          />
+          <div className="mb-4 border-b border-[var(--border)] pb-3">
+            <div className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
+              {data.kind === "debtor" ? "Debtor Ledger" : "Creditor Ledger"}
+            </div>
+            <div className="mt-1 text-xs text-[var(--muted)]">
+              {data.from} to {data.to}
+            </div>
+          </div>
 
           <div className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <div className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
                 Party
               </div>
-              <div className="font-semibold">{data.party.name}</div>
+              <div className="font-semibold">
+                <OriginLink href={partyMasterHref(data.party.id)}>{data.party.name}</OriginLink>
+              </div>
               <div className="text-xs text-[var(--muted)]">
                 {[
                   data.party.ntn ? `NTN ${data.party.ntn}` : null,
@@ -182,7 +188,9 @@ export function PartyLedgerView({
                 Control account
               </div>
               <div className="font-semibold">
-                {data.account.code} — {data.account.name}
+                <OriginLink href={accountLedgerHref(data.account.code)}>
+                  {data.account.code} — {data.account.name}
+                </OriginLink>
               </div>
               <div className="text-xs text-[var(--muted)]">
                 Opening {formatCurrency(data.opening.balance)} {data.opening.side} · Closing{" "}
@@ -229,7 +237,9 @@ export function PartyLedgerView({
                 data.transactions.map((txn) => (
                   <tr key={`${txn.voucherId}-${txn.voucherNo}-${txn.date}-${txn.debit}-${txn.credit}`}>
                     <td className="text-xs">{txn.date}</td>
-                    <td className="font-semibold text-[var(--accent)]">{txn.voucherNo}</td>
+                    <td className="font-semibold text-[var(--accent)]">
+                      <OriginLink href={voucherHref(txn.voucherId)}>{txn.voucherNo}</OriginLink>
+                    </td>
                     <td className="text-xs">{txn.voucherType}</td>
                     <td className="text-xs text-[var(--muted)]">{txn.referenceNo || "—"}</td>
                     <td className="text-xs">{txn.narration || "—"}</td>

@@ -77,7 +77,7 @@ export function AppShell({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--sidebar)] px-3 py-2.5 md:hidden">
+        <header className="no-print flex items-center gap-3 border-b border-[var(--border)] bg-[var(--sidebar)] px-3 py-2.5 md:hidden">
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}

@@ -3,15 +3,23 @@ import { PageShell } from "@/components/ui/PageShell";
 import { listAccounts } from "@/lib/accounts/service";
 import { getPrimaryCompany } from "@/lib/company/service";
 import { listParties } from "@/lib/parties/service";
-import { listVouchers } from "@/lib/vouchers/service";
+import { getVoucher, listVouchers } from "@/lib/vouchers/service";
 
 export const dynamic = "force-dynamic";
 
-export default async function VouchersPage() {
+type SearchParams = Promise<{ id?: string }>;
+
+export default async function VouchersPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
   let vouchers: Awaited<ReturnType<typeof listVouchers>>["vouchers"] = [];
   let accounts: Awaited<ReturnType<typeof listAccounts>>["accounts"] = [];
   let parties: Awaited<ReturnType<typeof listParties>>["parties"] = [];
   let company: Awaited<ReturnType<typeof getPrimaryCompany>> = null;
+  let openVoucher: Awaited<ReturnType<typeof getVoucher>> = null;
   let loadError: string | null = null;
 
   try {
@@ -25,6 +33,9 @@ export default async function VouchersPage() {
     accounts = accountData.accounts;
     parties = partyData.parties;
     company = companyData;
+    if (params.id?.trim()) {
+      openVoucher = await getVoucher(params.id.trim());
+    }
   } catch (error) {
     loadError =
       error instanceof Error
@@ -42,6 +53,8 @@ export default async function VouchersPage() {
         accounts={accounts}
         parties={parties}
         company={company}
+        openVoucherId={openVoucher?.id ?? params.id ?? null}
+        openVoucher={openVoucher}
         loadError={loadError}
       />
     </PageShell>

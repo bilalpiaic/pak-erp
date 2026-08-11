@@ -3,8 +3,14 @@
 import { useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
+import { OriginLink } from "@/components/ui/OriginLink";
 import { DEFAULT_FY_START, todayIso } from "@/lib/accounting/dates";
 import { formatCurrency } from "@/lib/formatting/money";
+import {
+  REPORT_LABEL_ACCOUNT_CODES,
+  accountLedgerHref,
+  partyLedgerHref,
+} from "@/lib/links";
 import type { ReportType } from "@/lib/reports/service";
 
 type ReportViewProps = {
@@ -76,10 +82,7 @@ export function ReportView({ type, title, initial, loadError = null }: ReportVie
 
       {data ? (
         <div className="border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
-          <div className="mb-4 border-b border-[var(--border)] pb-3 text-center">
-            <div className="text-sm font-semibold text-[var(--accent)]">
-              {String(data.companyName ?? "")}
-            </div>
+          <div className="mb-4 border-b border-[var(--border)] pb-3">
             <div className="text-base font-semibold text-[var(--foreground)]">{title}</div>
             <div className="text-[11px] text-[var(--muted)]">
               {data.fiscalYearName ? `${String(data.fiscalYearName)} · ` : ""}
@@ -144,7 +147,9 @@ function TrialBalanceBody({ data }: { data: Record<string, unknown> }) {
             ...section.items.map((item) => (
               <tr key={item.code}>
                 <td className="pl-5">
-                  {item.code} — {item.name}
+                  <OriginLink href={accountLedgerHref(item.code)}>
+                    {item.code} — {item.name}
+                  </OriginLink>
                 </td>
                 <td className="text-right font-mono text-[var(--success)]">
                   {Number(item.debit) > 0 ? formatCurrency(item.debit) : ""}
@@ -278,20 +283,27 @@ function StatementColumn({
       </div>
       <table className="data-table">
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.label}>
-              <td className={`${row.indent ? "pl-5" : ""} ${row.bold ? "font-semibold" : ""}`}>
-                {row.label}
-              </td>
-              <td
-                className={`text-right font-mono ${
-                  row.bold ? "font-semibold text-[var(--accent)]" : ""
-                } ${Number(row.amount) < 0 ? "text-[var(--danger)]" : ""}`}
-              >
-                {formatCurrency(row.amount)}
-              </td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const code = REPORT_LABEL_ACCOUNT_CODES[row.label];
+            return (
+              <tr key={row.label}>
+                <td className={`${row.indent ? "pl-5" : ""} ${row.bold ? "font-semibold" : ""}`}>
+                  {code ? (
+                    <OriginLink href={accountLedgerHref(code)}>{row.label}</OriginLink>
+                  ) : (
+                    row.label
+                  )}
+                </td>
+                <td
+                  className={`text-right font-mono ${
+                    row.bold ? "font-semibold text-[var(--accent)]" : ""
+                  } ${Number(row.amount) < 0 ? "text-[var(--danger)]" : ""}`}
+                >
+                  {formatCurrency(row.amount)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -326,7 +338,13 @@ function StatementLinesBody({ data }: { data: Record<string, unknown> }) {
                 <td
                   className={`${line.indent ? "pl-5" : ""} ${line.bold ? "font-semibold" : ""}`}
                 >
-                  {line.label}
+                  {REPORT_LABEL_ACCOUNT_CODES[line.label] ? (
+                    <OriginLink href={accountLedgerHref(REPORT_LABEL_ACCOUNT_CODES[line.label]!)}>
+                      {line.label}
+                    </OriginLink>
+                  ) : (
+                    line.label
+                  )}
                 </td>
                 <td
                   className={`text-right font-mono ${
@@ -353,7 +371,9 @@ function AgingBody({
   data: Record<string, unknown>;
   showWht: boolean;
 }) {
+  const kind = showWht ? ("creditor" as const) : ("debtor" as const);
   const parties = (data.parties as Array<{
+    id?: string | null;
     name: string;
     ntn: string | null;
     outstandingDays: number;
@@ -421,8 +441,14 @@ function AgingBody({
           </thead>
           <tbody>
             {parties.map((p) => (
-              <tr key={p.name}>
-                <td className="font-medium">{p.name}</td>
+              <tr key={`${p.id ?? p.name}`}>
+                <td className="font-medium">
+                  {p.id ? (
+                    <OriginLink href={partyLedgerHref(p.id, kind)}>{p.name}</OriginLink>
+                  ) : (
+                    p.name
+                  )}
+                </td>
                 <td className="text-[var(--muted)]">{p.ntn ?? "—"}</td>
                 <td className="text-right font-mono text-[var(--accent)]">
                   {formatCurrency(p.amount)}
