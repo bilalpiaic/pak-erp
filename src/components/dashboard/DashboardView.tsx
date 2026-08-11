@@ -12,16 +12,16 @@ type DashboardViewProps = {
 
 const TONE_CLASS: Record<DashboardResult["kpis"][number]["tone"], string> = {
   neutral: "border-[var(--border)] text-[var(--foreground)]",
-  success: "border-emerald-800/60 text-[var(--success)]",
-  danger: "border-red-800/60 text-red-300",
-  info: "border-sky-800/60 text-sky-300",
-  warning: "border-amber-800/60 text-amber-200",
+  success: "border-emerald-200 text-[var(--success)]",
+  danger: "border-red-200 text-[var(--danger)]",
+  info: "border-[var(--border-strong)] text-[var(--foreground)]",
+  warning: "border-amber-200 text-[var(--warning)]",
 };
 
 export function DashboardView({ data, loadError = null }: DashboardViewProps) {
   if (loadError) {
     return (
-      <p className="border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+      <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
         {loadError}
       </p>
     );
@@ -36,7 +36,7 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
   return (
     <div className="space-y-5">
       <div>
-        <div className="text-lg font-semibold text-[var(--accent)]">{data.companyName}</div>
+        <div className="font-display text-lg font-bold text-[var(--foreground)]">{data.companyName}</div>
         <div className="text-xs text-[var(--muted)]">
           Accounting dashboard
           {data.fiscalYearName ? ` — ${data.fiscalYearName}` : ""} · As of {data.asOf}
@@ -64,7 +64,7 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
           <span className="text-sm font-semibold text-[var(--accent)]">
             Recent vouchers
           </span>
-          <Link href="/journal" className="text-[11px] text-sky-300 hover:underline">
+          <Link href="/journal" className="text-[11px] text-[var(--accent)] hover:underline">
             View journal →
           </Link>
         </div>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Source_Sans_3 } from "next/font/google";
+import { IBM_Plex_Mono, Libre_Baskerville, Source_Sans_3 } from "next/font/google";
 
 import "./globals.css";
 
@@ -7,6 +7,12 @@ const sourceSans = Source_Sans_3({
   variable: "--font-source-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+const libreBaskerville = Libre_Baskerville({
+  variable: "--font-libre-baskerville",
+  subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -17,7 +23,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "GarmentLoop ERP",
-  description: "GarmentLoop ERP V1 — PostgreSQL-backed accounting",
+  description: "GarmentLoop ERP — PostgreSQL-backed accounting",
 };
 
 export default function RootLayout({
@@ -27,7 +33,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${sourceSans.variable} ${ibmPlexMono.variable} antialiased`}>
+      <body
+        className={`${sourceSans.variable} ${libreBaskerville.variable} ${ibmPlexMono.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

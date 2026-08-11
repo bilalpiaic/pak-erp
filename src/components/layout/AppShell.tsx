@@ -96,7 +96,7 @@ export function AppShell({
             </svg>
           </button>
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-[var(--accent)]">
+            <div className="truncate font-display text-sm font-bold text-[var(--foreground)]">
               {companyName}
             </div>
             <div className="truncate text-[10px] text-[var(--muted)]">GarmentLoop ERP · PKR</div>

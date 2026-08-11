@@ -30,9 +30,9 @@ type ViewState =
     };
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  DRAFT: { bg: "#713f12", color: "#fde68a" },
-  POSTED: { bg: "#14532d", color: "#86efac" },
-  CANCELLED: { bg: "#3b1f1f", color: "#fca5a5" },
+  DRAFT: { bg: "#f8efd9", color: "#9a6b12" },
+  POSTED: { bg: "#e6f5ec", color: "#1f7a4c" },
+  CANCELLED: { bg: "#fde8e6", color: "#b42318" },
 };
 
 export function VoucherEntry({
@@ -156,7 +156,7 @@ export function VoucherEntry({
               key={type}
               type="button"
               onClick={() => void openNew(type)}
-              className="border border-[#2d5090] bg-[#1a3565] px-3 py-2 text-[11px] font-semibold text-[var(--accent)]"
+              className="border border-[var(--accent)] bg-[var(--nav-active)] px-3 py-2 text-[11px] font-semibold text-[var(--accent)]"
             >
               + {type}
             </button>
@@ -201,7 +201,7 @@ export function VoucherEntry({
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-red-300" role="alert">
+        <p className="text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
@@ -210,14 +210,14 @@ export function VoucherEntry({
         <table className="w-full min-w-[860px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Voucher No.</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Date</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Type</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Party</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Reference</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2 text-right">Amount</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Status</th>
-              <th className="sticky top-0 bg-[#1a2540] px-3 py-2">Actions</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Voucher No.</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Date</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Type</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Party</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Reference</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2 text-right">Amount</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Status</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -240,7 +240,7 @@ export function VoucherEntry({
                     </td>
                     <td className="px-3 py-2 text-xs">{voucher.voucherDate}</td>
                     <td className="px-3 py-2">
-                      <span className="bg-[#1e3060] px-2 py-0.5 text-[10px] font-semibold text-[#93c5fd]">
+                      <span className="bg-white border border-[var(--border-strong)] px-2 py-0.5 text-[10px] font-semibold text-[var(--foreground)]">
                         {voucher.voucherType}
                       </span>
                     </td>
@@ -272,7 +272,7 @@ export function VoucherEntry({
                               voucher,
                             })
                           }
-                          className="bg-[#1e3060] px-2.5 py-1 text-[11px] text-[#93c5fd]"
+                          className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
                         >
                           Open
                         </button>

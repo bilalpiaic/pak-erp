@@ -145,7 +145,7 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
       </div>
 
       {error ? (
-        <p className="border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
@@ -184,7 +184,7 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
                   <td className="text-right font-mono text-[var(--success)]">
                     {Number(line.debit) > 0 ? formatCurrency(line.debit) : ""}
                   </td>
-                  <td className="text-right font-mono text-red-300">
+                  <td className="text-right font-mono text-[var(--danger)]">
                     {Number(line.credit) > 0 ? formatCurrency(line.credit) : ""}
                   </td>
                   <td className="max-w-[220px] truncate text-[var(--muted)]">
@@ -204,7 +204,7 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
                       Balanced
                     </span>
                   ) : (
-                    <span className="ml-2 text-[10px] uppercase tracking-wide text-red-300">
+                    <span className="ml-2 text-[10px] uppercase tracking-wide text-[var(--danger)]">
                       Out of balance
                     </span>
                   )}
@@ -212,7 +212,7 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
                 <td className="text-right font-mono text-[var(--success)]">
                   {formatCurrency(totals.debit)}
                 </td>
-                <td className="text-right font-mono text-red-300">
+                <td className="text-right font-mono text-[var(--danger)]">
                   {formatCurrency(totals.credit)}
                 </td>
                 <td />

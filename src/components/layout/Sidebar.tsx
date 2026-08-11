@@ -27,7 +27,7 @@ export function Sidebar({
       className={`flex h-full w-[220px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] lg:w-[240px] ${className}`}
     >
       <div className="border-b border-[var(--border)] px-3.5 py-4">
-        <div className="text-[13px] font-semibold leading-snug text-[var(--accent)]">
+        <div className="font-display text-[14px] font-bold leading-snug text-[var(--foreground)]">
           {companyName}
         </div>
         {ntn ? (
@@ -54,7 +54,7 @@ export function Sidebar({
                   onClick={onNavigate}
                   className={`flex w-full items-center border-l-[3px] px-3.5 py-2.5 text-left text-xs transition-colors ${
                     active
-                      ? "border-[var(--accent)] bg-[var(--nav-active)] font-semibold text-[var(--accent)]"
+                      ? "border-[var(--accent)] bg-[var(--nav-active)] font-semibold text-[var(--foreground)]"
                       : "border-transparent text-[var(--nav)] hover:bg-[var(--nav-hover)] hover:text-[var(--foreground)]"
                   }`}
                 >
