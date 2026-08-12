@@ -225,3 +225,20 @@ export async function ensureSeedAdmin(): Promise<void> {
     },
   });
 }
+
+/** Public login LOV — active usernames only (no secrets). */
+export async function listActiveUsernamesForLogin(): Promise<
+  { username: string; displayName: string }[]
+> {
+  await ensureSeedAdmin();
+  const prisma = getPrisma();
+  const users = await prisma.user.findMany({
+    where: { isActive: true },
+    select: { username: true, displayName: true },
+    orderBy: [{ username: "asc" }],
+  });
+  return users.map((u) => ({
+    username: u.username,
+    displayName: u.displayName,
+  }));
+}
