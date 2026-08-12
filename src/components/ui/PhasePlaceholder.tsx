@@ -12,7 +12,7 @@ export function PhasePlaceholder({ phase, summary }: PhasePlaceholderProps) {
       <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--muted)]">{summary}</p>
       <p className="mt-4 text-xs text-[var(--muted-strong)]">
         Amounts will display as{" "}
-        <span className="font-medium text-[var(--foreground)]">₨1,250,000.00</span> once data
+        <span className="font-medium text-[var(--foreground)]">₨ 1,250,000.00</span> once data
         is connected.
       </p>
     </div>

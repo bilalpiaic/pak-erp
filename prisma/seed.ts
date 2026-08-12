@@ -3,6 +3,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
+import { hashPassword } from "../src/lib/auth/password";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { SEED_ACCOUNTS, SEED_COMPANY, SEED_FISCAL_YEAR } from "./seed-data";
 
@@ -29,6 +30,7 @@ async function main() {
     await prisma.account.deleteMany();
     await prisma.fiscalYear.deleteMany();
     await prisma.company.deleteMany();
+    await prisma.user.deleteMany();
 
     const company = await prisma.company.create({
       data: SEED_COMPANY,
@@ -48,6 +50,16 @@ async function main() {
       })),
     });
 
+    await prisma.user.create({
+      data: {
+        username: "admin",
+        passwordHash: hashPassword("admin123"),
+        displayName: "Administrator",
+        role: "ADMIN",
+        isActive: true,
+      },
+    });
+
     const counts = {
       companies: await prisma.company.count(),
       fiscalYears: await prisma.fiscalYear.count(),
@@ -56,9 +68,11 @@ async function main() {
       vouchers: await prisma.voucher.count(),
       voucherLines: await prisma.voucherLine.count(),
       auditLogs: await prisma.auditLog.count(),
+      users: await prisma.user.count(),
     };
 
     console.log("Seed complete:", counts);
+    console.log("Default login: admin / admin123");
   } finally {
     await prisma.$disconnect();
     await pool.end();

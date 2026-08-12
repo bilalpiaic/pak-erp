@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { FiscalYearSelector } from "@/components/fiscal-year/FiscalYearSelector";
 import { NAV_SECTIONS } from "@/lib/navigation";
@@ -11,6 +11,8 @@ type SidebarProps = {
   ntn?: string | null;
   strn?: string | null;
   currency?: string;
+  currentUserName?: string | null;
+  currentUserRole?: string | null;
   onNavigate?: () => void;
   className?: string;
 };
@@ -20,10 +22,31 @@ export function Sidebar({
   ntn,
   strn,
   currency = "PKR",
+  currentUserName = null,
+  currentUserRole = null,
   onNavigate,
   className = "",
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const sections = NAV_SECTIONS.map((section) => {
+    if (section.title !== "Administration" || currentUserRole === "ADMIN") return section;
+    return {
+      ...section,
+      items: section.items.filter((item) => item.href !== "/users"),
+    };
+  });
+
+  async function logout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // still redirect to login
+    }
+    router.replace("/login");
+    router.refresh();
+  }
 
   return (
     <aside
@@ -42,7 +65,7 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto py-2">
-        {NAV_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <div key={section.title} className="mb-3">
             <div className="px-3.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted-strong)]">
               {section.title}
@@ -71,7 +94,17 @@ export function Sidebar({
 
       <div className="space-y-2 border-t border-[var(--border)] px-3.5 py-2.5">
         <FiscalYearSelector />
-        <div className="text-[10px] text-[var(--muted-strong)]">{currency} ₨</div>
+        {currentUserName ? (
+          <div className="text-[10px] text-[var(--muted)]">
+            Signed in as <span className="font-medium text-[var(--foreground)]">{currentUserName}</span>
+          </div>
+        ) : null}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[10px] text-[var(--muted-strong)]">{currency} ₨</div>
+          <button type="button" className="btn-secondary px-2 py-1 text-[10px]" onClick={logout}>
+            Sign out
+          </button>
+        </div>
       </div>
     </aside>
   );

@@ -207,7 +207,7 @@ export function CompanySettingsForm({ company, fiscalYear }: CompanySettingsForm
           {pending ? "Saving…" : company ? "Save Changes" : "Create Company"}
         </button>
         <p className="self-center text-xs text-[var(--muted-strong)]">
-          Stored in PostgreSQL · Currency display ₨000,000,000.00
+          Stored in PostgreSQL · Currency display ₨ 000,000,000.00
         </p>
       </div>
     </form>
