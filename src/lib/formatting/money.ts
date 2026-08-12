@@ -25,16 +25,16 @@ export function formatAmount(value: number | string | null | undefined): string 
   return `${negative ? "-" : ""}${withSeparators}.${decimalPart}`;
 }
 
-/** Format as ₨1,250,000.00 */
+/** Format as ₨ 1,250,000.00 (space after currency symbol). */
 export function formatCurrency(
   value: number | string | null | undefined,
   symbol: string = CURRENCY_SYMBOL,
 ): string {
   const amount = formatAmount(value);
   if (amount.startsWith("-")) {
-    return `-${symbol}${amount.slice(1)}`;
+    return `-${symbol} ${amount.slice(1)}`;
   }
-  return `${symbol}${amount}`;
+  return `${symbol} ${amount}`;
 }
 
 export function formatCurrencyWithDrCr(

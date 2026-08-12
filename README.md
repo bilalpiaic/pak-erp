@@ -15,7 +15,7 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 
 - Next.js + TypeScript + Tailwind + Prisma
 - App shell (responsive sm / md / lg)
-- Shared money formatter (`₨1,250,000.00`)
+- Shared money formatter (`₨ 1,250,000.00`)
 
 ### Phase 2 — Database
 
@@ -198,4 +198,4 @@ Administration → Company Settings, Users
 > PostgreSQL stores the accounting truth.  
 > The server performs the accounting calculations.  
 > Next.js displays the results.  
-> Every financial amount uses two decimal places and full thousands separators.
+> Every financial amount uses two decimal places and full thousands separators (e.g. `₨ 1,250,000.00`).
