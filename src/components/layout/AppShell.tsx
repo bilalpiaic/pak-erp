@@ -12,6 +12,8 @@ type AppShellProps = {
   ntn?: string | null;
   strn?: string | null;
   currency?: string;
+  currentUserName?: string | null;
+  currentUserRole?: string | null;
   fiscalYears?: FiscalYearDTO[];
   activeFiscalYear?: FiscalYearDTO | null;
   children: React.ReactNode;
@@ -22,6 +24,8 @@ export function AppShell({
   ntn,
   strn,
   currency = "PKR",
+  currentUserName = null,
+  currentUserRole = null,
   fiscalYears = [],
   activeFiscalYear = null,
   children,
@@ -59,6 +63,8 @@ export function AppShell({
             ntn={ntn}
             strn={strn}
             currency={currency}
+            currentUserName={currentUserName}
+            currentUserRole={currentUserRole}
           />
         </div>
 
@@ -85,6 +91,8 @@ export function AppShell({
               ntn={ntn}
               strn={strn}
               currency={currency}
+              currentUserName={currentUserName}
+              currentUserRole={currentUserRole}
               onNavigate={() => setMobileNavOpen(false)}
               className="w-full shadow-2xl"
             />

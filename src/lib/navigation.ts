@@ -38,7 +38,10 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Administration",
-    items: [{ href: "/settings", label: "Company Settings" }],
+    items: [
+      { href: "/settings", label: "Company Settings" },
+      { href: "/users", label: "Users" },
+    ],
   },
 ];
 

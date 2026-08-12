@@ -80,6 +80,14 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Printable sales invoice with company letterhead
 - `/api/sales-invoices`, `/api/sales-invoices/:id`, `/post`, `/cancel`
 
+### Phase 11 — User login & credentials CRUD
+
+- Username / password authentication with signed HTTP-only session cookies (`AUTH_SECRET`)
+- Middleware protects app pages and APIs; `/login` + `/api/auth/*` + `/api/health` remain public
+- Users admin CRUD (create / edit / activate / delete) under Administration → Users
+- Seeded default admin: `admin` / `admin123`
+- `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/users`, `/api/users/:id`
+
 ### Phase 13 — COA report links (BS / P&L / CF)
 
 - Accounts carry Balance Sheet head, Profit & Loss head, and Cash Flow link
@@ -102,7 +110,9 @@ npm run db:setup   # migrate deploy + seed
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — redirects to `/dashboard`.
+Open [http://localhost:3000](http://localhost:3000) — redirects to `/login` (or `/dashboard` when signed in).
+
+Default credentials after seed: **admin** / **admin123**
 
 Local Cloud Agent bootstrap (Postgres + migrate + seed):
 
@@ -146,7 +156,7 @@ Set these in [Vercel → pak-erp → Settings → Environment Variables](https:/
 |---|---|
 | `DATABASE_URL` | Neon **pooled** URL with `sslmode=require` (drop `channel_binding=require` if present) |
 | `DIRECT_URL` | Optional Neon **direct** (non-pooler) URL for migrations; build also auto-strips `-pooler` from `DATABASE_URL` |
-| `AUTH_SECRET` | Long random secret |
+| `AUTH_SECRET` | Session signing secret (required for login) |
 
 After env vars are saved, open the latest deployment → **Redeploy**, or push a new commit. Production URL updates when this branch is merged to `main` (or you promote a production deployment).
 
@@ -168,7 +178,7 @@ After env vars are saved, open the latest deployment → **Redeploy**, or push a
 | Variable | Notes |
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string (server-side only) |
-| `AUTH_SECRET` | Reserved for auth |
+| `AUTH_SECRET` | Required — signs login session cookies |
 | `NEXT_PUBLIC_APP_NAME` | App display name |
 | `NEXT_PUBLIC_CURRENCY` | Default `PKR` |
 
@@ -180,7 +190,7 @@ Never commit real database credentials.
 Dashboard
 Accounting → Chart of Accounts, Parties, Voucher Entry, General Journal, Account Ledger
 Reports → Trial Balance, Balance Sheet, P&L, Cash Flow, Debtors/Creditors Aging
-Administration → Company Settings
+Administration → Company Settings, Users
 ```
 
 ## Core principle
