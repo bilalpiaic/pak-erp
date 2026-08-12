@@ -6,6 +6,7 @@ import { Pool } from "pg";
 import { hashPassword } from "../src/lib/auth/password";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { SEED_ACCOUNTS, SEED_COMPANY, SEED_FISCAL_YEAR } from "./seed-data";
+import { DEMO_USER, seedDemoTenant } from "./seed-demo";
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -17,7 +18,7 @@ async function main() {
   const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
   try {
-    console.log("Seeding GarmentLoop ERP (COA only — no demo parties/vouchers)…");
+    console.log("Seeding GarmentLoop ERP (live shell + isolated demo tenant)…");
 
     // Clear in dependency order for idempotent re-seed.
     await prisma.auditLog.deleteMany();
@@ -33,7 +34,7 @@ async function main() {
     await prisma.user.deleteMany();
 
     const company = await prisma.company.create({
-      data: SEED_COMPANY,
+      data: { ...SEED_COMPANY, isDemo: false },
     });
 
     await prisma.fiscalYear.create({
@@ -57,22 +58,30 @@ async function main() {
         displayName: "Administrator",
         role: "ADMIN",
         isActive: true,
+        isDemo: false,
       },
     });
 
+    const demo = await seedDemoTenant(prisma);
+
     const counts = {
       companies: await prisma.company.count(),
+      liveCompanies: await prisma.company.count({ where: { isDemo: false } }),
+      demoCompanies: await prisma.company.count({ where: { isDemo: true } }),
       fiscalYears: await prisma.fiscalYear.count(),
       accounts: await prisma.account.count(),
       parties: await prisma.party.count(),
       vouchers: await prisma.voucher.count(),
       voucherLines: await prisma.voucherLine.count(),
+      salesInvoices: await prisma.salesInvoice.count(),
       auditLogs: await prisma.auditLog.count(),
       users: await prisma.user.count(),
+      demo,
     };
 
     console.log("Seed complete:", counts);
-    console.log("Default login: admin / admin123");
+    console.log("Live login: admin / admin123");
+    console.log(`Demo login: ${DEMO_USER.username} / ${DEMO_USER.password}`);
   } finally {
     await prisma.$disconnect();
     await pool.end();

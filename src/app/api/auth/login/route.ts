@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       username: user.username,
       displayName: user.displayName,
       role: user.role,
+      isDemo: user.isDemo,
     });
 
     const response = NextResponse.json({
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
         username: user.username,
         displayName: user.displayName,
         role: user.role,
+        isDemo: user.isDemo,
       },
     });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());

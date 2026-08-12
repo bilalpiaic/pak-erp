@@ -14,6 +14,7 @@ type AppShellProps = {
   currency?: string;
   currentUserName?: string | null;
   currentUserRole?: string | null;
+  isDemo?: boolean;
   fiscalYears?: FiscalYearDTO[];
   activeFiscalYear?: FiscalYearDTO | null;
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export function AppShell({
   currency = "PKR",
   currentUserName = null,
   currentUserRole = null,
+  isDemo = false,
   fiscalYears = [],
   activeFiscalYear = null,
   children,
@@ -125,9 +127,17 @@ export function AppShell({
               <div className="truncate text-[10px] text-[var(--muted)]">
                 GarmentLoop ERP · {currency}
                 {activeFiscalYear ? ` · ${activeFiscalYear.name}` : ""}
+                {isDemo ? " · DEMO" : ""}
               </div>
             </div>
           </header>
+
+          {isDemo ? (
+            <div className="no-print border-b border-amber-300/80 bg-[var(--warning-bg)] px-3 py-2 text-center text-[11px] font-medium text-[var(--warning)] sm:text-xs">
+              Marketing demo tenant — sample company, forms, and reports only. Live accounting data is
+              not shown.
+            </div>
+          ) : null}
 
           <main className="min-h-0 flex-1 overflow-auto">{children}</main>
         </div>
