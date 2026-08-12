@@ -19,10 +19,6 @@ export default function LoginPage() {
         <Suspense fallback={<p className="text-sm text-[var(--muted)]">Loading…</p>}>
           <LoginForm />
         </Suspense>
-        <p className="mt-5 text-center text-[10px] text-[var(--muted-strong)]">
-          Default admin: <span className="font-mono">admin</span> /{" "}
-          <span className="font-mono">admin123</span>
-        </p>
       </div>
     </div>
   );
