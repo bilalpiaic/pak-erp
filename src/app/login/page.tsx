@@ -16,8 +16,8 @@ export default function LoginPage() {
           alt=""
           className="login-factory-gif h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(22,18,12,0.78)_0%,rgba(48,36,22,0.52)_48%,rgba(185,148,69,0.30)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,rgba(12,10,8,0.55)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(16,22,30,0.78)_0%,rgba(28,36,48,0.50)_48%,rgba(185,148,69,0.26)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_12%,rgba(8,10,14,0.55)_100%)]" />
       </div>
 
       <div className="login-card w-full max-w-sm border border-white/30 bg-[rgba(249,247,242,0.93)] p-6 shadow-[0_28px_70px_rgba(0,0,0,0.38)] backdrop-blur-md">
