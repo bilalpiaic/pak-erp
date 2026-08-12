@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { GarmentLoopMark } from "@/components/brand/GarmentLoopMark";
 import { FiscalYearSelector } from "@/components/fiscal-year/FiscalYearSelector";
 import { NAV_SECTIONS } from "@/lib/navigation";
 
@@ -53,15 +54,20 @@ export function Sidebar({
       className={`flex h-full w-[220px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] lg:w-[240px] ${className}`}
     >
       <div className="border-b border-[var(--border)] px-3.5 py-4">
-        <div className="font-display text-[14px] font-bold leading-snug text-[var(--foreground)]">
-          {companyName}
+        <div className="flex items-start gap-2.5">
+          <GarmentLoopMark size={28} className="mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <div className="font-display text-[14px] font-bold leading-snug text-[var(--foreground)]">
+              {companyName}
+            </div>
+            {ntn ? (
+              <div className="mt-1 text-[10px] text-[var(--muted)]">NTN: {ntn}</div>
+            ) : null}
+            {strn ? (
+              <div className="text-[10px] text-[var(--muted)]">STRN: {strn}</div>
+            ) : null}
+          </div>
         </div>
-        {ntn ? (
-          <div className="mt-1 text-[10px] text-[var(--muted)]">NTN: {ntn}</div>
-        ) : null}
-        {strn ? (
-          <div className="text-[10px] text-[var(--muted)]">STRN: {strn}</div>
-        ) : null}
       </div>
 
       <nav className="flex-1 overflow-y-auto py-2">

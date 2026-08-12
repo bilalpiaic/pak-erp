@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { LoginForm } from "@/components/auth/LoginForm";
+import { GarmentLoopMark } from "@/components/brand/GarmentLoopMark";
 
 export const metadata = {
   title: "Sign in — GarmentLoop ERP",
@@ -22,6 +23,9 @@ export default function LoginPage() {
 
       <div className="login-card w-full max-w-sm border border-white/30 bg-[rgba(249,247,242,0.93)] p-6 shadow-[0_28px_70px_rgba(0,0,0,0.38)] backdrop-blur-md">
         <div className="mb-6 border-b border-[var(--border)] pb-4 text-center">
+          <div className="mb-3 flex justify-center">
+            <GarmentLoopMark size={48} />
+          </div>
           <div className="font-display text-xl font-bold tracking-tight text-[var(--foreground)]">
             GarmentLoop ERP
           </div>
