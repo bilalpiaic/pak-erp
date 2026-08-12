@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
+import { GarmentLoopMark } from "@/components/brand/GarmentLoopMark";
 import { FiscalYearProvider } from "@/components/fiscal-year/FiscalYearProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import type { FiscalYearDTO } from "@/lib/company/types";
@@ -120,6 +121,7 @@ export function AppShell({
                 />
               </svg>
             </button>
+            <GarmentLoopMark size={28} className="shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="truncate font-display text-sm font-bold text-[var(--foreground)]">
                 {companyName}

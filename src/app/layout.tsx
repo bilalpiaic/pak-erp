@@ -24,6 +24,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "GarmentLoop ERP",
   description: "GarmentLoop ERP — PostgreSQL-backed accounting",
+  applicationName: "GarmentLoop ERP",
 };
 
 export default function RootLayout({
