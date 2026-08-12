@@ -10,6 +10,8 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Prevent browser password managers from injecting saved credentials on load.
+  const [unlockAutofill, setUnlockAutofill] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -37,12 +39,26 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4"
+      autoComplete="off"
+      data-lpignore="true"
+      data-1p-ignore="true"
+      data-bwignore="true"
+    >
       <label className="block">
         <span className="mb-1 block text-[11px] text-[var(--muted)]">Username</span>
         <input
           className="field-input w-full"
-          autoComplete="username"
+          name="erp-username"
+          type="text"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          readOnly={!unlockAutofill}
+          onFocus={() => setUnlockAutofill(true)}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
@@ -51,9 +67,12 @@ export function LoginForm() {
       <label className="block">
         <span className="mb-1 block text-[11px] text-[var(--muted)]">Password</span>
         <input
-          type="password"
           className="field-input w-full"
-          autoComplete="current-password"
+          name="erp-password"
+          type="password"
+          autoComplete="new-password"
+          readOnly={!unlockAutofill}
+          onFocus={() => setUnlockAutofill(true)}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
