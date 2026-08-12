@@ -34,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       currency={company?.currency ?? "PKR"}
       currentUserName={session?.displayName ?? session?.username ?? null}
       currentUserRole={session?.role ?? null}
+      isDemo={Boolean(session?.isDemo || company?.isDemo)}
       fiscalYears={fiscalYears}
       activeFiscalYear={activeFiscalYear}
     >

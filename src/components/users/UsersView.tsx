@@ -290,7 +290,14 @@ export function UsersView({
             ) : (
               filtered.map((user) => (
                 <tr key={user.id}>
-                  <td className="font-mono font-medium">{user.username}</td>
+                  <td className="font-mono font-medium">
+                    {user.username}
+                    {user.isDemo ? (
+                      <span className="ml-2 rounded bg-[var(--warning-bg)] px-1.5 py-0.5 text-[10px] text-[var(--warning)]">
+                        DEMO
+                      </span>
+                    ) : null}
+                  </td>
                   <td>{user.displayName}</td>
                   <td>{user.role}</td>
                   <td>

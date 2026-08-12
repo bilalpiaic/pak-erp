@@ -8,6 +8,7 @@ export type CompanyDTO = {
   email: string | null;
   currency: string;
   fiscalYearStart: number;
+  isDemo: boolean;
   createdAt: string;
   updatedAt: string;
 };

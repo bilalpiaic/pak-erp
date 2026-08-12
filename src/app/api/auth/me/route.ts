@@ -19,6 +19,7 @@ export async function GET() {
         username: session.username,
         displayName: session.displayName,
         role: session.role,
+        isDemo: session.isDemo,
       },
     });
   } catch (error) {

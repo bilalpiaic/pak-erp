@@ -60,6 +60,8 @@ model Company {
   email            String?  @db.VarChar(150)
   currency         String   @default("PKR") @db.VarChar(10)
   fiscalYearStart  Int      @default(7) @map("fiscal_year_start") // 1–12, default July
+  /// Marketing / demo tenant — isolated from live company data by company_id.
+  isDemo           Boolean  @default(false) @map("is_demo")
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -70,6 +72,7 @@ model Company {
   auditLogs      AuditLog[]
   salesInvoices  SalesInvoice[]
 
+  @@index([isDemo])
   @@map("companies")
 }
 
@@ -287,9 +290,12 @@ model User {
   displayName  String   @map("display_name") @db.VarChar(150)
   role         UserRole @default(USER)
   isActive     Boolean  @default(true) @map("is_active")
+  /// When true, session resolves only the demo company tenant (marketing).
+  isDemo       Boolean  @default(false) @map("is_demo")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([isActive])
+  @@index([isDemo])
   @@map("users")
 }

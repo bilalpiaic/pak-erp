@@ -88,6 +88,13 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Seeded default admin: `admin` / `admin123`
 - `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/users`, `/api/users/:id`
 
+### Phase 12 — Demo marketing tenant
+
+- Isolated demo company (`companies.is_demo = true`) with its own COA, parties, vouchers, invoices
+- Demo login `demo` / `demo1234` only resolves demo tenant data across forms, lists, and reports
+- Live users never see demo rows; demo users never see live accounting data
+- `npm run prisma:seed:demo` refreshes demo tenant without wiping live data
+
 ### Phase 13 — COA report links (BS / P&L / CF)
 
 - Accounts carry Balance Sheet head, Profit & Loss head, and Cash Flow link
@@ -112,7 +119,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) — redirects to `/login` (or `/dashboard` when signed in).
 
-Default credentials after seed: **admin** / **admin123**
+Default credentials after seed: **admin** / **admin123** (live) · **demo** / **demo1234** (marketing demo tenant)
 
 Local Cloud Agent bootstrap (Postgres + migrate + seed):
 

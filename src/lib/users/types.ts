@@ -8,6 +8,7 @@ export type UserDTO = {
   displayName: string;
   role: UserRoleValue;
   isActive: boolean;
+  isDemo: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -18,6 +19,7 @@ export type UserInput = {
   displayName: string;
   role: UserRoleValue;
   isActive?: boolean;
+  isDemo?: boolean;
 };
 
 export type UserListQuery = {

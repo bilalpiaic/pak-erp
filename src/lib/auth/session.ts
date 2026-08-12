@@ -8,6 +8,7 @@ export type SessionPayload = {
   username: string;
   displayName: string;
   role: "ADMIN" | "USER";
+  isDemo: boolean;
   exp: number;
 };
 
@@ -72,7 +73,10 @@ function decodePayload(encoded: string): SessionPayload | null {
     ) {
       return null;
     }
-    return parsed;
+    return {
+      ...parsed,
+      isDemo: Boolean(parsed.isDemo),
+    };
   } catch {
     return null;
   }

@@ -20,6 +20,7 @@ function toUserDTO(user: User): UserDTO {
     displayName: user.displayName,
     role: user.role as UserRoleValue,
     isActive: user.isActive,
+    isDemo: user.isDemo,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   });
@@ -104,6 +105,8 @@ export async function createUser(input: UserInput): Promise<UserDTO> {
         displayName: input.displayName.trim(),
         role: input.role,
         isActive: input.isActive ?? true,
+        // Demo login is seed-managed only (marketing tenant).
+        isDemo: false,
       },
     });
     return toUserDTO(user);
@@ -170,6 +173,10 @@ export async function deleteUser(id: string, actorUserId?: string): Promise<void
   const prisma = getPrisma();
   const existing = await prisma.user.findUnique({ where: { id: BigInt(id) } });
   if (!existing) throw new Error("User not found.");
+
+  if (existing.isDemo) {
+    throw new Error("The marketing demo user cannot be deleted.");
+  }
 
   if (actorUserId && existing.id.toString() === actorUserId) {
     throw new Error("You cannot delete your own account.");

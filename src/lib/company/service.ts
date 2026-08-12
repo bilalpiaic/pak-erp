@@ -1,6 +1,7 @@
 import type { Company, FiscalYear } from "@/generated/prisma/client";
 import { cookies } from "next/headers";
 
+import { getSession } from "@/lib/auth/request";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
 import { ACTIVE_FY_COOKIE } from "@/lib/fiscal-years/constants";
@@ -19,6 +20,7 @@ function toCompanyDTO(company: Company): CompanyDTO {
     email: company.email,
     currency: company.currency,
     fiscalYearStart: company.fiscalYearStart,
+    isDemo: company.isDemo,
     createdAt: company.createdAt.toISOString(),
     updatedAt: company.updatedAt.toISOString(),
   });
@@ -34,9 +36,25 @@ function toFiscalYearDTO(fy: FiscalYear): FiscalYearDTO {
   });
 }
 
+/** Resolve whether the current request should use the demo tenant. */
+export async function resolveIsDemoTenant(): Promise<boolean> {
+  try {
+    const session = await getSession();
+    return Boolean(session?.isDemo);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Active company for this request.
+ * Demo users only see the demo company; everyone else sees the live company.
+ */
 export async function getPrimaryCompany(): Promise<CompanyDTO | null> {
   const prisma = getPrisma();
+  const isDemo = await resolveIsDemoTenant();
   const company = await prisma.company.findFirst({
+    where: { isDemo },
     orderBy: { id: "asc" },
   });
   return company ? toCompanyDTO(company) : null;
@@ -47,7 +65,9 @@ export async function getPrimaryCompanyWithFiscalYear(): Promise<{
   fiscalYear: FiscalYearDTO | null;
 } | null> {
   const prisma = getPrisma();
+  const isDemo = await resolveIsDemoTenant();
   const company = await prisma.company.findFirst({
+    where: { isDemo },
     orderBy: { id: "asc" },
     include: {
       fiscalYears: {
@@ -117,7 +137,12 @@ export function validateCompanyInput(input: CompanyInput): string[] {
 
 export async function createCompany(input: CompanyInput): Promise<CompanyDTO> {
   const prisma = getPrisma();
-  const existing = await prisma.company.findFirst();
+  const isDemo = await resolveIsDemoTenant();
+  if (isDemo) {
+    throw new Error("Demo tenant company profile is fixed for marketing. Sign in with a live user to create a company.");
+  }
+
+  const existing = await prisma.company.findFirst({ where: { isDemo: false } });
   if (existing) {
     throw new Error("A company already exists. Update the existing company instead.");
   }
@@ -133,6 +158,7 @@ export async function createCompany(input: CompanyInput): Promise<CompanyDTO> {
         email: normalizeOptional(input.email),
         currency: (input.currency ?? "PKR").trim() || "PKR",
         fiscalYearStart: input.fiscalYearStart ?? 7,
+        isDemo: false,
       },
     });
 
@@ -174,10 +200,13 @@ export async function updateCompany(
   input: CompanyInput,
 ): Promise<CompanyDTO> {
   const prisma = getPrisma();
+  const isDemo = await resolveIsDemoTenant();
   const companyId = BigInt(id);
 
   const company = await prisma.$transaction(async (tx) => {
-    const before = await tx.company.findUnique({ where: { id: companyId } });
+    const before = await tx.company.findFirst({
+      where: { id: companyId, isDemo },
+    });
     if (!before) {
       throw new Error("Company not found.");
     }
