@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { actorName, authErrorResponse, requireSession } from "@/lib/auth/request";
 import {
   createAndPostSalesInvoice,
   createDraftSalesInvoice,
@@ -35,12 +36,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await requireSession();
+    const actor = actorName(session);
     const body = (await request.json()) as SalesInvoiceInput & { post?: boolean };
     const invoice = body.post
-      ? await createAndPostSalesInvoice(body)
-      : await createDraftSalesInvoice(body);
+      ? await createAndPostSalesInvoice(body, actor)
+      : await createDraftSalesInvoice(body, actor);
     return NextResponse.json({ invoice }, { status: 201 });
   } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     const message =
       error instanceof Error ? error.message : "Failed to create sales invoice.";
     const status =

@@ -26,6 +26,7 @@ type VoucherWithLines = Voucher & {
     }
   >;
   attachments: VoucherAttachment[];
+  salesInvoice?: { id: bigint; invoiceNo: string } | null;
 };
 
 function decimalString(value: { toString(): string }): string {
@@ -101,6 +102,9 @@ const voucherInclude = {
   },
   attachments: {
     orderBy: { createdAt: "desc" as const },
+  },
+  salesInvoice: {
+    select: { id: true, invoiceNo: true },
   },
 };
 
@@ -209,7 +213,21 @@ async function assertAccountsUsable(
   }
 }
 
-export async function createDraftVoucher(input: VoucherInput): Promise<VoucherDTO> {
+function assertManualVoucher(voucher: {
+  voucherType: string;
+  salesInvoice?: { id: bigint } | null;
+}): void {
+  if (voucher.voucherType === "SI" || voucher.salesInvoice) {
+    throw new Error(
+      "Sales invoices must be unposted or deleted from Sales Invoices so the invoice and ledger stay in sync.",
+    );
+  }
+}
+
+export async function createDraftVoucher(
+  input: VoucherInput,
+  actor = "system",
+): Promise<VoucherDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
   const validation = validateVoucherInput(input, {
@@ -245,7 +263,7 @@ export async function createDraftVoucher(input: VoucherInput): Promise<VoucherDT
         whtApplicable: Boolean(input.whtApplicable),
         narration: input.narration?.trim() || null,
         status: "DRAFT",
-        createdBy: "system",
+        createdBy: actor,
         lines: {
           create: validation.lines.map((line) => ({
             accountId: line.accountId,
@@ -261,7 +279,7 @@ export async function createDraftVoucher(input: VoucherInput): Promise<VoucherDT
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "CREATE",
         entity: "Voucher",
         recordId: voucher.id.toString(),
@@ -283,6 +301,7 @@ export async function createDraftVoucher(input: VoucherInput): Promise<VoucherDT
 export async function updateDraftVoucher(
   id: string,
   input: VoucherInput,
+  actor = "system",
 ): Promise<VoucherDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
@@ -313,8 +332,9 @@ export async function updateDraftVoucher(
     });
     if (!before) throw new Error("Voucher not found.");
     if (before.status !== "DRAFT") {
-      throw new Error("Only draft vouchers can be edited.");
+      throw new Error("Only draft vouchers can be edited. Unpost first if this voucher is posted.");
     }
+    assertManualVoucher(before);
 
     await tx.voucherLine.deleteMany({ where: { voucherId } });
 
@@ -344,7 +364,7 @@ export async function updateDraftVoucher(
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "UPDATE",
         entity: "Voucher",
         recordId: voucher.id.toString(),
@@ -364,7 +384,7 @@ export async function updateDraftVoucher(
   return toVoucherDTO(updated);
 }
 
-export async function postVoucher(id: string): Promise<VoucherDTO> {
+export async function postVoucher(id: string, actor = "system"): Promise<VoucherDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
   const voucherId = BigInt(id);
@@ -411,7 +431,7 @@ export async function postVoucher(id: string): Promise<VoucherDTO> {
       where: { id: voucherId },
       data: {
         status: "POSTED",
-        postedBy: "system",
+        postedBy: actor,
         postedAt: new Date(),
       },
       include: voucherInclude,
@@ -420,7 +440,7 @@ export async function postVoucher(id: string): Promise<VoucherDTO> {
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "POST",
         entity: "Voucher",
         recordId: updated.id.toString(),
@@ -440,7 +460,7 @@ export async function postVoucher(id: string): Promise<VoucherDTO> {
   return toVoucherDTO(posted);
 }
 
-export async function cancelVoucher(id: string): Promise<VoucherDTO> {
+export async function cancelVoucher(id: string, actor = "system"): Promise<VoucherDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
   const voucherId = BigInt(id);
@@ -451,6 +471,7 @@ export async function cancelVoucher(id: string): Promise<VoucherDTO> {
       include: voucherInclude,
     });
     if (!voucher) throw new Error("Voucher not found.");
+    assertManualVoucher(voucher);
     if (voucher.status !== "POSTED") {
       throw new Error("Only posted vouchers can be cancelled.");
     }
@@ -459,7 +480,7 @@ export async function cancelVoucher(id: string): Promise<VoucherDTO> {
       where: { id: voucherId },
       data: {
         status: "CANCELLED",
-        cancelledBy: "system",
+        cancelledBy: actor,
         cancelledAt: new Date(),
       },
       include: voucherInclude,
@@ -468,7 +489,7 @@ export async function cancelVoucher(id: string): Promise<VoucherDTO> {
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "CANCEL",
         entity: "Voucher",
         recordId: updated.id.toString(),
@@ -484,7 +505,10 @@ export async function cancelVoucher(id: string): Promise<VoucherDTO> {
 }
 
 /** Create draft then immediately post in one flow (used by UI Post button). */
-export async function createAndPostVoucher(input: VoucherInput): Promise<VoucherDTO> {
+export async function createAndPostVoucher(
+  input: VoucherInput,
+  actor = "system",
+): Promise<VoucherDTO> {
   const validation = validateVoucherInput(input, {
     requireBalanced: true,
     requireLines: true,
@@ -492,6 +516,102 @@ export async function createAndPostVoucher(input: VoucherInput): Promise<Voucher
   if (validation.errors.length) {
     throw new Error(validation.errors.join(" "));
   }
-  const draft = await createDraftVoucher(input);
-  return postVoucher(draft.id);
+  const draft = await createDraftVoucher(input, actor);
+  return postVoucher(draft.id, actor);
+}
+
+/** Return a posted voucher to DRAFT so it can be edited. Does not rewrite posted history in place. */
+export async function unpostVoucher(id: string, actor = "system"): Promise<VoucherDTO> {
+  const prisma = getPrisma();
+  const companyId = await requireCompanyId();
+  const voucherId = BigInt(id);
+
+  const unposted = await prisma.$transaction(async (tx) => {
+    const voucher = await tx.voucher.findFirst({
+      where: { id: voucherId, companyId },
+      include: voucherInclude,
+    });
+    if (!voucher) throw new Error("Voucher not found.");
+    assertManualVoucher(voucher);
+    if (voucher.status !== "POSTED") {
+      throw new Error("Only posted vouchers can be unposted.");
+    }
+
+    const updated = await tx.voucher.update({
+      where: { id: voucherId },
+      data: {
+        status: "DRAFT",
+        postedBy: null,
+        postedAt: null,
+      },
+      include: voucherInclude,
+    });
+
+    await tx.auditLog.create({
+      data: {
+        companyId,
+        actor,
+        action: "UNPOST",
+        entity: "Voucher",
+        recordId: updated.id.toString(),
+        oldValue: { status: "POSTED", voucherNo: voucher.voucherNo },
+        newValue: { status: "DRAFT", voucherNo: updated.voucherNo },
+      },
+    });
+
+    return updated;
+  });
+
+  return toVoucherDTO(unposted);
+}
+
+/** Permanently delete a draft voucher (and attachments). Posted documents must be unposted first. */
+export async function deleteDraftVoucher(id: string, actor = "system"): Promise<void> {
+  const prisma = getPrisma();
+  const companyId = await requireCompanyId();
+  const voucherId = BigInt(id);
+
+  const { storageKeys } = await prisma.$transaction(async (tx) => {
+    const voucher = await tx.voucher.findFirst({
+      where: { id: voucherId, companyId },
+      include: voucherInclude,
+    });
+    if (!voucher) throw new Error("Voucher not found.");
+    assertManualVoucher(voucher);
+    if (voucher.status !== "DRAFT") {
+      throw new Error("Only draft vouchers can be deleted. Unpost first if this voucher is posted.");
+    }
+
+    const storageKeys = voucher.attachments.map((row) => row.storageKey);
+
+    await tx.voucher.delete({ where: { id: voucherId } });
+
+    await tx.auditLog.create({
+      data: {
+        companyId,
+        actor,
+        action: "DELETE",
+        entity: "Voucher",
+        recordId: voucherId.toString(),
+        oldValue: {
+          voucherNo: voucher.voucherNo,
+          status: voucher.status,
+          voucherType: voucher.voucherType,
+        },
+      },
+    });
+
+    return { storageKeys };
+  });
+
+  const { deleteStoredAttachment } = await import("@/lib/attachments/storage");
+  await Promise.all(
+    storageKeys.map(async (key) => {
+      try {
+        await deleteStoredAttachment(key);
+      } catch {
+        // DB row is already gone; leftover files are non-fatal.
+      }
+    }),
+  );
 }

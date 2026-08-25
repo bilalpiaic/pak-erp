@@ -6,6 +6,7 @@ import {
   validateAccountInput,
 } from "@/lib/accounts/service";
 import type { AccountInput, AccountListQuery } from "@/lib/accounts/types";
+import { actorName, authErrorResponse, requireAdmin } from "@/lib/auth/request";
 
 export const runtime = "nodejs";
 
@@ -29,15 +30,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await requireAdmin();
     const body = (await request.json()) as AccountInput;
     const errors = validateAccountInput(body);
     if (errors.length) {
       return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
     }
 
-    const account = await createAccount(body);
+    const account = await createAccount(body, actorName(session));
     return NextResponse.json({ account }, { status: 201 });
   } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     const message = error instanceof Error ? error.message : "Failed to create account.";
     const status = message.includes("already exists")
       ? 409

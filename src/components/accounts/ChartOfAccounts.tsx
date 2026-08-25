@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { AccountFormModal } from "@/components/accounts/AccountFormModal";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { PrintButton } from "@/components/print/PrintButton";
 import { OriginLink } from "@/components/ui/OriginLink";
 import {
@@ -52,6 +53,7 @@ export function ChartOfAccounts({
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();
   const skipFirstFetch = useRef(true);
+  const { isAdmin } = useCurrentUser();
 
   const visibleCount = useMemo(
     () => groups.reduce((sum, section) => sum + section.accounts.length, 0),
@@ -156,6 +158,34 @@ export function ChartOfAccounts({
     }
   }
 
+  async function deleteAccountRow(account: AccountDTO) {
+    if (account.hasTransactions) {
+      setError(
+        `Account ${account.code} has voucher lines and cannot be deleted. Deactivate it instead.`,
+      );
+      return;
+    }
+    if (
+      !window.confirm(`Delete account ${account.code} — ${account.name}? This cannot be undone.`)
+    ) {
+      return;
+    }
+    setMessage(null);
+    setError(null);
+    try {
+      const response = await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "Unable to delete account.");
+        return;
+      }
+      setMessage(`Deleted ${account.code} — ${account.name}`);
+      await reload();
+    } catch {
+      setError("Unable to reach the server.");
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -192,16 +222,18 @@ export function ChartOfAccounts({
 
         <div className="flex flex-wrap gap-2">
           <PrintButton />
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(null);
-              setModal("create");
-            }}
-            className="bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink)]"
-          >
-            + New Account
-          </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(null);
+                setModal("create");
+              }}
+              className="bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink)]"
+            >
+              + New Account
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -232,13 +264,15 @@ export function ChartOfAccounts({
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Statement head</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">CF link</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Status</th>
-              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Actions</th>
+              {isAdmin ? (
+                <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Actions</th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {groups.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-sm text-[var(--muted)]">
+                <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center text-sm text-[var(--muted)]">
                   No accounts match the current filters.
                 </td>
               </tr>
@@ -252,6 +286,8 @@ export function ChartOfAccounts({
                     setModal("edit");
                   }}
                   onToggle={toggleActive}
+                  onDelete={deleteAccountRow}
+                  isAdmin={isAdmin}
                 />
               ))
             )}
@@ -262,9 +298,10 @@ export function ChartOfAccounts({
       <p className="text-xs text-[var(--muted-strong)]">
         Accounts are listed code-wise (1→9) under COA groups. Each account links to exactly one
         Balance Sheet or Profit &amp; Loss head (plus optional Cash Flow) so new heads appear on
-        statements. Codes are immutable after creation; deactivate instead of deleting when
-        transactions exist ({accounts.filter((a) => a.hasTransactions).length} accounts currently
-        have posted lines).
+        statements. Codes are immutable after creation. Administrators can add, edit, deactivate,
+        or delete unused accounts; accounts with voucher lines cannot be deleted (
+        {accounts.filter((a) => a.hasTransactions).length} currently have lines). Non-admin users
+        can view the chart for posting.
       </p>
 
       {modal ? (
@@ -295,16 +332,20 @@ function GroupRows({
   section,
   onEdit,
   onToggle,
+  onDelete,
+  isAdmin,
 }: {
   section: AccountGroupSection;
   onEdit: (account: AccountDTO) => void;
   onToggle: (account: AccountDTO) => void;
+  onDelete: (account: AccountDTO) => void;
+  isAdmin: boolean;
 }) {
   return (
     <>
       <tr className="bg-[#0f1a30]">
         <td
-          colSpan={8}
+          colSpan={isAdmin ? 8 : 7}
           className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]"
         >
           {section.group}
@@ -359,24 +400,39 @@ function GroupRows({
                 {account.isActive ? "Active" : "Inactive"}
               </span>
             </td>
-            <td className="px-3 py-2">
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => onEdit(account)}
-                  className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onToggle(account)}
-                  className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--warning)]"
-                >
-                  {account.isActive ? "Deactivate" : "Activate"}
-                </button>
-              </div>
-            </td>
+            {isAdmin ? (
+              <td className="px-3 py-2">
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(account)}
+                    className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggle(account)}
+                    className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--warning)]"
+                  >
+                    {account.isActive ? "Deactivate" : "Activate"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={account.hasTransactions}
+                    title={
+                      account.hasTransactions
+                        ? "Has voucher lines — deactivate instead"
+                        : "Delete unused account"
+                    }
+                    onClick={() => onDelete(account)}
+                    className="bg-[#3b1f1f] px-2.5 py-1 text-[11px] text-[#fca5a5] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            ) : null}
           </tr>
         );
       })}

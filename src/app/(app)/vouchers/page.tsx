@@ -46,7 +46,7 @@ export default async function VouchersPage({
   return (
     <PageShell
       title="Voucher Entry"
-      description="Create draft vouchers and post balanced double-entry transactions (BPV, BRV, CPV, CRV, JV). Posted vouchers are immutable — cancel instead of editing."
+      description="Create, post, and (for Administrators) unpost vouchers so they can be edited or deleted. Posted documents stay in the ledger until unposted or cancelled."
     >
       <VoucherEntry
         initialVouchers={vouchers}

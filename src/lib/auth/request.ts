@@ -28,6 +28,11 @@ export async function requireAdmin(): Promise<SessionPayload> {
   return session;
 }
 
+export function actorName(session: SessionPayload | null | undefined): string {
+  const name = session?.username?.trim();
+  return name || "system";
+}
+
 export class AuthError extends Error {
   status: number;
 

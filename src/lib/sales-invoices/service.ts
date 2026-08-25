@@ -238,6 +238,23 @@ async function syncVoucherGl(
   return voucher.id;
 }
 
+async function adjustPartyOutstanding(
+  tx: Prisma.TransactionClient,
+  args: { partyId: bigint; companyId: bigint; deltaCents: number },
+): Promise<void> {
+  const party = await tx.party.findFirst({
+    where: { id: args.partyId, companyId: args.companyId },
+  });
+  if (!party) return;
+  const current = toCents(party.outstandingAmount?.toString() ?? "0") ?? 0;
+  await tx.party.update({
+    where: { id: party.id },
+    data: {
+      outstandingAmount: centsToDecimalString(Math.max(0, current + args.deltaCents)),
+    },
+  });
+}
+
 export async function listSalesInvoices(
   query: SalesInvoiceListQuery = {},
 ): Promise<{ invoices: SalesInvoiceDTO[] }> {
@@ -285,6 +302,7 @@ export async function nextSalesInvoiceNo(): Promise<string> {
 
 export async function createDraftSalesInvoice(
   input: SalesInvoiceInput,
+  actor = "system",
 ): Promise<SalesInvoiceDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
@@ -332,7 +350,7 @@ export async function createDraftSalesInvoice(
         narration: input.narration?.trim() || null,
         status: "DRAFT",
         totalAmount,
-        createdBy: "system",
+        createdBy: actor,
         lines: {
           create: validation.lines.map((line, index) => ({
             lineNo: index + 1,
@@ -350,7 +368,7 @@ export async function createDraftSalesInvoice(
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "CREATE",
         entity: "SalesInvoice",
         recordId: invoice.id.toString(),
@@ -372,6 +390,7 @@ export async function createDraftSalesInvoice(
 export async function updateDraftSalesInvoice(
   id: string,
   input: SalesInvoiceInput,
+  actor = "system",
 ): Promise<SalesInvoiceDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
@@ -394,7 +413,9 @@ export async function updateDraftSalesInvoice(
     });
     if (!before) throw new Error("Sales invoice not found.");
     if (before.status !== "DRAFT") {
-      throw new Error("Only draft sales invoices can be edited.");
+      throw new Error(
+        "Only draft sales invoices can be edited. Unpost first if this invoice is posted.",
+      );
     }
 
     await tx.salesInvoiceLine.deleteMany({ where: { salesInvoiceId: invoiceId } });
@@ -459,7 +480,7 @@ export async function updateDraftSalesInvoice(
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "UPDATE",
         entity: "SalesInvoice",
         recordId: invoice.id.toString(),
@@ -474,7 +495,7 @@ export async function updateDraftSalesInvoice(
   return toInvoiceDTO(updated);
 }
 
-export async function postSalesInvoice(id: string): Promise<SalesInvoiceDTO> {
+export async function postSalesInvoice(id: string, actor = "system"): Promise<SalesInvoiceDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
   const invoiceId = BigInt(id);
@@ -540,34 +561,26 @@ export async function postSalesInvoice(id: string): Promise<SalesInvoiceDTO> {
       data: {
         status: "POSTED",
         postedAt: new Date(),
-        postedBy: "system",
+        postedBy: actor,
       },
     });
 
-    const party = await tx.party.findFirst({
-      where: { id: invoice.partyId, companyId },
+    await adjustPartyOutstanding(tx, {
+      partyId: invoice.partyId,
+      companyId,
+      deltaCents: validation.totalAmountCents,
     });
-    if (party) {
-      const current = toCents(party.outstandingAmount?.toString() ?? "0") ?? 0;
-      await tx.party.update({
-        where: { id: party.id },
-        data: {
-          outstandingAmount: centsToDecimalString(current + validation.totalAmountCents),
-        },
-      });
-    }
 
-    const updated = await tx.salesInvoice.update({
+    await tx.salesInvoice.update({
       where: { id: invoiceId },
       data: {
         voucherId,
         status: "POSTED",
         totalAmount,
         postedAt: new Date(),
-        postedBy: "system",
+        postedBy: actor,
         lines: undefined,
       },
-      include: invoiceInclude,
     });
 
     // Replace lines with validated ones in case they drifted
@@ -592,7 +605,7 @@ export async function postSalesInvoice(id: string): Promise<SalesInvoiceDTO> {
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "POST",
         entity: "SalesInvoice",
         recordId: invoiceId.toString(),
@@ -612,7 +625,7 @@ export async function postSalesInvoice(id: string): Promise<SalesInvoiceDTO> {
   return toInvoiceDTO(posted);
 }
 
-export async function cancelSalesInvoice(id: string): Promise<SalesInvoiceDTO> {
+export async function cancelSalesInvoice(id: string, actor = "system"): Promise<SalesInvoiceDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
   const invoiceId = BigInt(id);
@@ -637,32 +650,25 @@ export async function cancelSalesInvoice(id: string): Promise<SalesInvoiceDTO> {
           data: {
             status: "CANCELLED",
             cancelledAt: new Date(),
-            cancelledBy: "system",
+            cancelledBy: actor,
           },
         });
       }
     }
 
     const amountCents = toCents(invoice.totalAmount.toString()) ?? 0;
-    const party = await tx.party.findFirst({
-      where: { id: invoice.partyId, companyId },
+    await adjustPartyOutstanding(tx, {
+      partyId: invoice.partyId,
+      companyId,
+      deltaCents: -amountCents,
     });
-    if (party) {
-      const current = toCents(party.outstandingAmount?.toString() ?? "0") ?? 0;
-      await tx.party.update({
-        where: { id: party.id },
-        data: {
-          outstandingAmount: centsToDecimalString(Math.max(0, current - amountCents)),
-        },
-      });
-    }
 
     const updated = await tx.salesInvoice.update({
       where: { id: invoiceId },
       data: {
         status: "CANCELLED",
         cancelledAt: new Date(),
-        cancelledBy: "system",
+        cancelledBy: actor,
       },
       include: invoiceInclude,
     });
@@ -670,7 +676,7 @@ export async function cancelSalesInvoice(id: string): Promise<SalesInvoiceDTO> {
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "CANCEL",
         entity: "SalesInvoice",
         recordId: invoiceId.toString(),
@@ -685,9 +691,145 @@ export async function cancelSalesInvoice(id: string): Promise<SalesInvoiceDTO> {
   return toInvoiceDTO(cancelled);
 }
 
+/** Return a posted sales invoice (and its SI voucher) to DRAFT so it can be edited. */
+export async function unpostSalesInvoice(id: string, actor = "system"): Promise<SalesInvoiceDTO> {
+  const prisma = getPrisma();
+  const companyId = await requireCompanyId();
+  const invoiceId = BigInt(id);
+
+  const unposted = await prisma.$transaction(async (tx) => {
+    const invoice = await tx.salesInvoice.findFirst({
+      where: { id: invoiceId, companyId },
+      include: invoiceInclude,
+    });
+    if (!invoice) throw new Error("Sales invoice not found.");
+    if (invoice.status !== "POSTED") {
+      throw new Error("Only posted sales invoices can be unposted.");
+    }
+
+    if (invoice.voucherId) {
+      const voucher = await tx.voucher.findFirst({
+        where: { id: invoice.voucherId, companyId },
+      });
+      if (voucher && voucher.status === "POSTED") {
+        await tx.voucher.update({
+          where: { id: voucher.id },
+          data: {
+            status: "DRAFT",
+            postedAt: null,
+            postedBy: null,
+          },
+        });
+      } else if (voucher && voucher.status !== "DRAFT") {
+        throw new Error("Linked voucher cannot be returned to draft.");
+      }
+    }
+
+    const amountCents = toCents(invoice.totalAmount.toString()) ?? 0;
+    await adjustPartyOutstanding(tx, {
+      partyId: invoice.partyId,
+      companyId,
+      deltaCents: -amountCents,
+    });
+
+    const updated = await tx.salesInvoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: "DRAFT",
+        postedAt: null,
+        postedBy: null,
+      },
+      include: invoiceInclude,
+    });
+
+    await tx.auditLog.create({
+      data: {
+        companyId,
+        actor,
+        action: "UNPOST",
+        entity: "SalesInvoice",
+        recordId: invoiceId.toString(),
+        oldValue: {
+          status: "POSTED",
+          invoiceNo: invoice.invoiceNo,
+          totalAmount: invoice.totalAmount.toString(),
+        },
+        newValue: { status: "DRAFT", invoiceNo: updated.invoiceNo },
+      },
+    });
+
+    return updated;
+  });
+
+  return toInvoiceDTO(unposted);
+}
+
+/** Permanently delete a draft sales invoice and its linked SI voucher. */
+export async function deleteDraftSalesInvoice(id: string, actor = "system"): Promise<void> {
+  const prisma = getPrisma();
+  const companyId = await requireCompanyId();
+  const invoiceId = BigInt(id);
+
+  const { storageKeys } = await prisma.$transaction(async (tx) => {
+    const invoice = await tx.salesInvoice.findFirst({
+      where: { id: invoiceId, companyId },
+      include: invoiceInclude,
+    });
+    if (!invoice) throw new Error("Sales invoice not found.");
+    if (invoice.status !== "DRAFT") {
+      throw new Error(
+        "Only draft sales invoices can be deleted. Unpost first if this invoice is posted.",
+      );
+    }
+
+    const voucherId = invoice.voucherId;
+    const attachments = voucherId
+      ? await tx.voucherAttachment.findMany({
+          where: { voucherId },
+          select: { storageKey: true },
+        })
+      : [];
+    const storageKeys = attachments.map((row) => row.storageKey);
+
+    await tx.salesInvoice.delete({ where: { id: invoiceId } });
+    if (voucherId) {
+      await tx.voucher.delete({ where: { id: voucherId } });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        companyId,
+        actor,
+        action: "DELETE",
+        entity: "SalesInvoice",
+        recordId: invoiceId.toString(),
+        oldValue: {
+          invoiceNo: invoice.invoiceNo,
+          status: invoice.status,
+          voucherNo: invoice.voucher?.voucherNo ?? null,
+        },
+      },
+    });
+
+    return { storageKeys };
+  });
+
+  const { deleteStoredAttachment } = await import("@/lib/attachments/storage");
+  await Promise.all(
+    storageKeys.map(async (key) => {
+      try {
+        await deleteStoredAttachment(key);
+      } catch {
+        // DB row is already gone; leftover files are non-fatal.
+      }
+    }),
+  );
+}
+
 export async function createAndPostSalesInvoice(
   input: SalesInvoiceInput,
+  actor = "system",
 ): Promise<SalesInvoiceDTO> {
-  const draft = await createDraftSalesInvoice(input);
-  return postSalesInvoice(draft.id);
+  const draft = await createDraftSalesInvoice(input, actor);
+  return postSalesInvoice(draft.id, actor);
 }

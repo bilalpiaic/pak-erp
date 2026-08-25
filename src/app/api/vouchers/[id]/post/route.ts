@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { actorName, authErrorResponse, requireSession } from "@/lib/auth/request";
 import { postVoucher } from "@/lib/vouchers/service";
 
 export const runtime = "nodejs";
@@ -10,10 +11,13 @@ type RouteContext = {
 
 export async function POST(_request: Request, context: RouteContext) {
   try {
+    const session = await requireSession();
     const { id } = await context.params;
-    const voucher = await postVoucher(id);
+    const voucher = await postVoucher(id, actorName(session));
     return NextResponse.json({ voucher });
   } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     const message = error instanceof Error ? error.message : "Failed to post voucher.";
     const status = message.includes("not found")
       ? 404

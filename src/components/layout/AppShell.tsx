@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { GarmentLoopMark } from "@/components/brand/GarmentLoopMark";
+import { CurrentUserProvider } from "@/components/auth/CurrentUserProvider";
 import { FiscalYearProvider } from "@/components/fiscal-year/FiscalYearProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import type { FiscalYearDTO } from "@/lib/company/types";
@@ -15,6 +16,7 @@ type AppShellProps = {
   currency?: string;
   currentUserName?: string | null;
   currentUserRole?: string | null;
+  currentUserUsername?: string | null;
   isDemo?: boolean;
   fiscalYears?: FiscalYearDTO[];
   activeFiscalYear?: FiscalYearDTO | null;
@@ -28,6 +30,7 @@ export function AppShell({
   currency = "PKR",
   currentUserName = null,
   currentUserRole = null,
+  currentUserUsername = null,
   isDemo = false,
   fiscalYears = [],
   activeFiscalYear = null,
@@ -58,6 +61,12 @@ export function AppShell({
 
   return (
     <FiscalYearProvider fiscalYears={fiscalYears} activeFiscalYear={activeFiscalYear}>
+      <CurrentUserProvider
+        username={currentUserUsername}
+        displayName={currentUserName}
+        role={currentUserRole}
+        isDemo={isDemo}
+      >
       <div className="flex h-dvh overflow-hidden">
         {/* Desktop / tablet sidebar */}
         <div className="hidden h-full md:flex">
@@ -144,6 +153,7 @@ export function AppShell({
           <main className="min-h-0 flex-1 overflow-auto">{children}</main>
         </div>
       </div>
+      </CurrentUserProvider>
     </FiscalYearProvider>
   );
 }

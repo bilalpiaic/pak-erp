@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { PrintButton } from "@/components/print/PrintButton";
 import { OriginLink } from "@/components/ui/OriginLink";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { VoucherForm } from "@/components/vouchers/VoucherForm";
 import type { AccountDTO } from "@/lib/accounts/types";
 import type { CompanyDTO } from "@/lib/company/types";
@@ -54,6 +55,7 @@ export function VoucherEntry({
   loadError = null,
 }: VoucherEntryProps) {
   const router = useRouter();
+  const { isAdmin } = useCurrentUser();
   const [vouchers, setVouchers] = useState(initialVouchers);
   const [view, setView] = useState<ViewState>({ kind: "list" });
   const [search, setSearch] = useState("");
@@ -135,6 +137,58 @@ export function VoucherEntry({
     }
   }
 
+  async function unpostPosted(voucher: VoucherDTO) {
+    if (
+      !window.confirm(
+        `Unpost ${voucher.voucherNo}? It will return to draft, drop out of ledgers, and can then be edited or deleted.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(`/api/vouchers/${voucher.id}/unpost`, {
+        method: "POST",
+      });
+      const data = (await response.json()) as { voucher?: VoucherDTO; error?: string };
+      if (!response.ok || !data.voucher) {
+        setError(data.error ?? "Unable to unpost voucher.");
+        return;
+      }
+      setMessage(`Unposted ${data.voucher.voucherNo} — now a draft`);
+      setView({
+        kind: "form",
+        mode: "edit",
+        voucherType: data.voucher.voucherType,
+        voucherNo: data.voucher.voucherNo,
+        voucher: data.voucher,
+      });
+      refresh();
+    } catch {
+      setError("Unable to reach the server.");
+    }
+  }
+
+  async function deleteDraft(voucher: VoucherDTO) {
+    if (!window.confirm(`Delete draft voucher ${voucher.voucherNo}? This cannot be undone.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(`/api/vouchers/${voucher.id}`, { method: "DELETE" });
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "Unable to delete voucher.");
+        return;
+      }
+      setMessage(`Deleted ${voucher.voucherNo}`);
+      if (view.kind === "form") setView({ kind: "list" });
+      refresh();
+    } catch {
+      setError("Unable to reach the server.");
+    }
+  }
+
   async function cancelPosted(voucher: VoucherDTO) {
     if (!window.confirm(`Cancel posted voucher ${voucher.voucherNo}?`)) return;
     setError(null);
@@ -157,6 +211,7 @@ export function VoucherEntry({
   if (view.kind === "form") {
     return (
       <VoucherForm
+        key={`${view.voucher?.id ?? "new"}-${view.mode}-${view.voucher?.status ?? "new"}`}
         mode={view.mode}
         voucherType={view.voucherType}
         voucherNo={view.voucherNo}
@@ -355,6 +410,24 @@ export function VoucherEntry({
                         >
                           Print
                         </button>
+                        {isAdmin && voucher.status === "DRAFT" ? (
+                          <button
+                            type="button"
+                            onClick={() => void deleteDraft(voucher)}
+                            className="bg-[#3b1f1f] px-2.5 py-1 text-[11px] text-[#fca5a5]"
+                          >
+                            Delete
+                          </button>
+                        ) : null}
+                        {isAdmin && voucher.status === "POSTED" ? (
+                          <button
+                            type="button"
+                            onClick={() => void unpostPosted(voucher)}
+                            className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
+                          >
+                            Unpost
+                          </button>
+                        ) : null}
                         {voucher.status === "POSTED" ? (
                           <button
                             type="button"

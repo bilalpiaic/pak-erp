@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PrintButton } from "@/components/print/PrintButton";
 import { SalesInvoiceForm } from "@/components/sales-invoices/SalesInvoiceForm";
 import { OriginLink } from "@/components/ui/OriginLink";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { CompanyDTO } from "@/lib/company/types";
 import { partyLedgerHref, salesInvoiceHref } from "@/lib/links";
@@ -44,6 +45,7 @@ export function SalesInvoiceEntry({
   loadError = null,
 }: SalesInvoiceEntryProps) {
   const router = useRouter();
+  const { isAdmin } = useCurrentUser();
   const [invoices, setInvoices] = useState(initialInvoices);
   const [view, setView] = useState<ViewState>({ kind: "list" });
   const [search, setSearch] = useState("");
@@ -111,6 +113,60 @@ export function SalesInvoiceEntry({
     }
   }
 
+  async function unpostPosted(invoice: SalesInvoiceDTO) {
+    if (
+      !window.confirm(
+        `Unpost ${invoice.invoiceNo}? Party outstanding and the linked SI voucher will reverse so you can edit or delete it.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(`/api/sales-invoices/${invoice.id}/unpost`, {
+        method: "POST",
+      });
+      const data = (await response.json()) as {
+        invoice?: SalesInvoiceDTO;
+        error?: string;
+      };
+      if (!response.ok || !data.invoice) {
+        setError(data.error ?? "Unable to unpost sales invoice.");
+        return;
+      }
+      setMessage(`Unposted ${data.invoice.invoiceNo} — now a draft`);
+      setView({
+        kind: "form",
+        mode: "edit",
+        invoiceNo: data.invoice.invoiceNo,
+        invoice: data.invoice,
+      });
+      refresh();
+    } catch {
+      setError("Unable to reach the server.");
+    }
+  }
+
+  async function deleteDraft(invoice: SalesInvoiceDTO) {
+    if (!window.confirm(`Delete draft sales invoice ${invoice.invoiceNo}? This cannot be undone.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(`/api/sales-invoices/${invoice.id}`, { method: "DELETE" });
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "Unable to delete sales invoice.");
+        return;
+      }
+      setMessage(`Deleted ${invoice.invoiceNo}`);
+      if (view.kind === "form") setView({ kind: "list" });
+      refresh();
+    } catch {
+      setError("Unable to reach the server.");
+    }
+  }
+
   async function cancelPosted(invoice: SalesInvoiceDTO) {
     if (!window.confirm(`Cancel posted sales invoice ${invoice.invoiceNo}?`)) return;
     setError(null);
@@ -136,6 +192,7 @@ export function SalesInvoiceEntry({
   if (view.kind === "form") {
     return (
       <SalesInvoiceForm
+        key={`${view.invoice?.id ?? "new"}-${view.mode}-${view.invoice?.status ?? "new"}`}
         mode={view.mode}
         invoiceNo={view.invoiceNo}
         initial={view.invoice}
@@ -299,6 +356,24 @@ export function SalesInvoiceEntry({
                         >
                           Print
                         </button>
+                        {isAdmin && invoice.status === "DRAFT" ? (
+                          <button
+                            type="button"
+                            onClick={() => void deleteDraft(invoice)}
+                            className="bg-[#3b1f1f] px-2.5 py-1 text-[11px] text-[#fca5a5]"
+                          >
+                            Delete
+                          </button>
+                        ) : null}
+                        {isAdmin && invoice.status === "POSTED" ? (
+                          <button
+                            type="button"
+                            onClick={() => void unpostPosted(invoice)}
+                            className="bg-white border border-[var(--border-strong)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
+                          >
+                            Unpost
+                          </button>
+                        ) : null}
                         {invoice.status === "POSTED" ? (
                           <button
                             type="button"

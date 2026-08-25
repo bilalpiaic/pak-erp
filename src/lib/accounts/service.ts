@@ -1,4 +1,5 @@
 import type { Account, NormalBalance, Prisma } from "@/generated/prisma/client";
+import { isProtectedAccountCode } from "@/lib/accounts/codes";
 import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
@@ -232,7 +233,7 @@ export async function getAccount(id: string): Promise<AccountDTO | null> {
   return account ? toAccountDTO(account) : null;
 }
 
-export async function createAccount(input: AccountInput): Promise<AccountDTO> {
+export async function createAccount(input: AccountInput, actor = "system"): Promise<AccountDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
   const code = input.code.trim();
@@ -265,7 +266,7 @@ export async function createAccount(input: AccountInput): Promise<AccountDTO> {
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action: "CREATE",
         entity: "Account",
         recordId: account.id.toString(),
@@ -291,6 +292,7 @@ export async function createAccount(input: AccountInput): Promise<AccountDTO> {
 export async function updateAccount(
   id: string,
   input: AccountInput,
+  actor = "system",
 ): Promise<AccountDTO> {
   const prisma = getPrisma();
   const companyId = await requireCompanyId();
@@ -335,7 +337,7 @@ export async function updateAccount(
     await tx.auditLog.create({
       data: {
         companyId,
-        actor: "system",
+        actor,
         action,
         entity: "Account",
         recordId: account.id.toString(),
@@ -371,21 +373,70 @@ export async function updateAccount(
 export async function setAccountActive(
   id: string,
   isActive: boolean,
+  actor = "system",
 ): Promise<AccountDTO> {
   const existing = await getAccount(id);
   if (!existing) {
     throw new Error("Account not found.");
   }
 
-  return updateAccount(id, {
-    code: existing.code,
-    name: existing.name,
-    accountType: existing.accountType,
-    accountGroup: existing.accountGroup as AccountGroup | null,
-    bsSection: existing.bsSection,
-    plSection: existing.plSection,
-    cfLink: existing.cfLink,
-    normalBalance: existing.normalBalance,
-    isActive,
+  return updateAccount(
+    id,
+    {
+      code: existing.code,
+      name: existing.name,
+      accountType: existing.accountType,
+      accountGroup: existing.accountGroup as AccountGroup | null,
+      bsSection: existing.bsSection,
+      plSection: existing.plSection,
+      cfLink: existing.cfLink,
+      normalBalance: existing.normalBalance,
+      isActive,
+    },
+    actor,
+  );
+}
+
+export async function deleteAccount(id: string, actor = "system"): Promise<void> {
+  const prisma = getPrisma();
+  const companyId = await requireCompanyId();
+  const accountId = BigInt(id);
+
+  await prisma.$transaction(async (tx) => {
+    const account = await tx.account.findFirst({
+      where: { id: accountId, companyId },
+      include: { _count: { select: { voucherLines: true } } },
+    });
+    if (!account) {
+      throw new Error("Account not found.");
+    }
+    if (isProtectedAccountCode(account.code)) {
+      throw new Error(
+        `Account ${account.code} is required for posting and cannot be deleted. Deactivate it instead.`,
+      );
+    }
+    if (account._count.voucherLines > 0) {
+      throw new Error(
+        `Account ${account.code} has voucher lines and cannot be deleted. Deactivate it instead.`,
+      );
+    }
+
+    await tx.account.delete({ where: { id: accountId } });
+
+    await tx.auditLog.create({
+      data: {
+        companyId,
+        actor,
+        action: "DELETE",
+        entity: "Account",
+        recordId: accountId.toString(),
+        oldValue: {
+          code: account.code,
+          name: account.name,
+          accountType: account.accountType,
+          isActive: account.isActive,
+        },
+      },
+    });
   });
 }
