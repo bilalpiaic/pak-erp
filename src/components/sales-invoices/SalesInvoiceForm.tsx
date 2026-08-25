@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
 import { PrintButton } from "@/components/print/PrintButton";
 import { SalesInvoicePrint } from "@/components/sales-invoices/SalesInvoicePrint";
@@ -59,8 +60,7 @@ export function SalesInvoiceForm({
   onBack,
   onSaved,
 }: SalesInvoiceFormProps) {
-  const readOnly =
-    mode === "view" || initial?.status === "POSTED" || initial?.status === "CANCELLED";
+  const { isAdmin } = useCurrentUser();
 
   useEffect(() => {
     if (!autoPrint) return;
@@ -97,6 +97,9 @@ export function SalesInvoiceForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [savedInvoice, setSavedInvoice] = useState<SalesInvoiceDTO | null>(initial ?? null);
+  const status = savedInvoice?.status ?? initial?.status ?? "DRAFT";
+  const readOnly = mode === "view" || status === "POSTED" || status === "CANCELLED";
+  const existingId = savedInvoice?.id ?? initial?.id ?? null;
 
   const totalCents = lines.reduce((sum, line) => sum + (toCents(line.amount) ?? 0), 0);
   const selectedParty = debtorParties.find((p) => p.id === partyId);
@@ -217,6 +220,60 @@ export function SalesInvoiceForm({
     }
   }
 
+  async function unpost() {
+    if (!existingId) return;
+    if (
+      !window.confirm(
+        `Unpost ${invoiceNo}? Party outstanding and the linked SI voucher will reverse so you can edit.`,
+      )
+    ) {
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/sales-invoices/${existingId}/unpost`, {
+        method: "POST",
+      });
+      const data = (await response.json()) as {
+        invoice?: SalesInvoiceDTO;
+        error?: string;
+      };
+      if (!response.ok || !data.invoice) {
+        setError(data.error ?? "Unable to unpost sales invoice.");
+        return;
+      }
+      setSavedInvoice(data.invoice);
+      onSaved(data.invoice);
+    } catch {
+      setError("Unable to reach the server.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function removeDraft() {
+    if (!existingId) return;
+    if (!window.confirm(`Delete draft sales invoice ${invoiceNo}? This cannot be undone.`)) {
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/sales-invoices/${existingId}`, { method: "DELETE" });
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "Unable to delete sales invoice.");
+        return;
+      }
+      onBack();
+    } catch {
+      setError("Unable to reach the server.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -237,6 +294,26 @@ export function SalesInvoiceForm({
         </div>
         <div className="flex flex-wrap gap-2">
           <PrintButton />
+          {isAdmin && status === "POSTED" ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => void unpost()}
+              className="border border-[var(--border-strong)] bg-white px-3 py-2 text-[11px] font-semibold disabled:opacity-60"
+            >
+              {pending ? "Unposting…" : "Unpost to edit"}
+            </button>
+          ) : null}
+          {isAdmin && status === "DRAFT" && existingId ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => void removeDraft()}
+              className="bg-[#3b1f1f] px-3 py-2 text-[11px] font-semibold text-[#fca5a5] disabled:opacity-60"
+            >
+              Delete draft
+            </button>
+          ) : null}
           {!readOnly ? (
             <>
               <button

@@ -42,7 +42,7 @@ export default async function SalesInvoicesPage({
   return (
     <PageShell
       title="Sales Invoices"
-      description="Create sales invoices with party, PO#, and item lines. Posting writes Dr Trade Debtors / Cr Sales directly to the customer ledger."
+      description="Create sales invoices with party, PO#, and item lines. Posting writes Dr Trade Debtors / Cr Sales. Administrators can unpost a posted invoice to edit or delete it."
     >
       <SalesInvoiceEntry
         initialInvoices={invoices}

@@ -5,3 +5,9 @@ export const ACCOUNT_CODES = {
   SALES_TAXABLE: "4001",
   SALES_EXEMPT: "4002",
 } as const;
+
+export const PROTECTED_ACCOUNT_CODES = new Set<string>(Object.values(ACCOUNT_CODES));
+
+export function isProtectedAccountCode(code: string): boolean {
+  return PROTECTED_ACCOUNT_CODES.has(code.trim());
+}

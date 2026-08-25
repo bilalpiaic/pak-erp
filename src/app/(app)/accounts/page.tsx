@@ -23,7 +23,7 @@ export default async function AccountsPage() {
   return (
     <PageShell
       title="Chart of Accounts"
-      description="Maintain account codes under BS/P&L COA groups, with Balance Sheet, Profit & Loss, and Cash Flow statement links."
+      description="View account codes under BS/P&L COA groups. Administrators can add, edit, deactivate, or delete unused accounts."
     >
       <ChartOfAccounts
         initialAccounts={accounts}

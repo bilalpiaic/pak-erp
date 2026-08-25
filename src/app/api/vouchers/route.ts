@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { actorName, authErrorResponse, requireSession } from "@/lib/auth/request";
 import {
   createAndPostVoucher,
   createDraftVoucher,
@@ -46,12 +47,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await requireSession();
+    const actor = actorName(session);
     const body = (await request.json()) as VoucherInput & { post?: boolean };
     const voucher = body.post
-      ? await createAndPostVoucher(body)
-      : await createDraftVoucher(body);
+      ? await createAndPostVoucher(body, actor)
+      : await createDraftVoucher(body, actor);
     return NextResponse.json({ voucher }, { status: 201 });
   } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     const message = error instanceof Error ? error.message : "Failed to create voucher.";
     const status =
       message.includes("not balanced") ||

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { AccountFormModal } from "@/components/accounts/AccountFormModal";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
 import { PrintButton } from "@/components/print/PrintButton";
 import { VoucherAttachmentsPanel } from "@/components/vouchers/VoucherAttachmentsPanel";
@@ -55,8 +56,7 @@ export function VoucherForm({
   onBack,
   onSaved,
 }: VoucherFormProps) {
-  const readOnly =
-    mode === "view" || initial?.status === "POSTED" || initial?.status === "CANCELLED";
+  const { isAdmin } = useCurrentUser();
 
   useEffect(() => {
     if (!autoPrint) return;
@@ -103,6 +103,9 @@ export function VoucherForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [savedVoucher, setSavedVoucher] = useState<VoucherDTO | null>(initial ?? null);
+  const status = savedVoucher?.status ?? initial?.status ?? "DRAFT";
+  const readOnly = mode === "view" || status === "POSTED" || status === "CANCELLED";
+  const existingId = savedVoucher?.id ?? initial?.id ?? null;
 
   const totalDebitCents = sumCents(lines.map((l) => l.debit));
   const totalCreditCents = sumCents(lines.map((l) => l.credit));
@@ -243,6 +246,53 @@ export function VoucherForm({
     }
   }
 
+  async function unpost() {
+    if (!existingId) return;
+    if (
+      !window.confirm(
+        `Unpost ${voucherNo}? It will return to draft and drop out of ledgers until you post it again.`,
+      )
+    ) {
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/vouchers/${existingId}/unpost`, { method: "POST" });
+      const data = (await response.json()) as { voucher?: VoucherDTO; error?: string };
+      if (!response.ok || !data.voucher) {
+        setError(data.error ?? "Unable to unpost voucher.");
+        return;
+      }
+      setSavedVoucher(data.voucher);
+      onSaved(data.voucher);
+    } catch {
+      setError("Unable to reach the server.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function removeDraft() {
+    if (!existingId) return;
+    if (!window.confirm(`Delete draft voucher ${voucherNo}? This cannot be undone.`)) return;
+    setPending(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/vouchers/${existingId}`, { method: "DELETE" });
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "Unable to delete voucher.");
+        return;
+      }
+      onBack();
+    } catch {
+      setError("Unable to reach the server.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -256,6 +306,26 @@ export function VoucherForm({
         </div>
         <div className="flex flex-wrap gap-2">
           <PrintButton />
+          {isAdmin && status === "POSTED" ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => void unpost()}
+              className="border border-[var(--border-strong)] bg-white px-3 py-2 text-xs font-semibold text-[var(--foreground)] disabled:opacity-60"
+            >
+              {pending ? "Unposting…" : "Unpost to edit"}
+            </button>
+          ) : null}
+          {isAdmin && status === "DRAFT" && existingId ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => void removeDraft()}
+              className="bg-[#3b1f1f] px-3 py-2 text-xs font-semibold text-[#fca5a5] disabled:opacity-60"
+            >
+              Delete draft
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onBack}
@@ -383,7 +453,7 @@ export function VoucherForm({
               <th className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <span>Account</span>
-                  {!readOnly ? (
+                  {!readOnly && isAdmin ? (
                     <button
                       type="button"
                       onClick={() => setAccountModalLine(-1)}
@@ -428,14 +498,16 @@ export function VoucherForm({
                             </option>
                           ))}
                         </select>
-                        <button
-                          type="button"
-                          title="New account for this line"
-                          onClick={() => setAccountModalLine(index)}
-                          className="shrink-0 border border-[var(--border-strong)] bg-white px-2 py-2 text-[11px] font-semibold text-[var(--accent)]"
-                        >
-                          +
-                        </button>
+                        {isAdmin ? (
+                          <button
+                            type="button"
+                            title="New account for this line"
+                            onClick={() => setAccountModalLine(index)}
+                            className="shrink-0 border border-[var(--border-strong)] bg-white px-2 py-2 text-[11px] font-semibold text-[var(--accent)]"
+                          >
+                            +
+                          </button>
+                        ) : null}
                       </div>
                     )}
                   </td>

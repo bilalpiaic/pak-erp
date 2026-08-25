@@ -104,6 +104,14 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 
 
 
+### Phase 14 — Admin unpost / COA maintenance
+
+- Posted vouchers and sales invoices stay immutable for ordinary users
+- Administrators can **unpost** a posted voucher or sales invoice back to draft (ledgers and party outstanding reverse) then edit or delete
+- Cancel remains a permanent void (keeps the cancelled document)
+- Chart of Accounts add / edit / deactivate / delete is Administrator-only; unused accounts can be deleted
+- Audit log records `UNPOST` and `DELETE`
+
 The legacy single-file prototype lives in `legacy/index.html`.
 
 ## Getting started
