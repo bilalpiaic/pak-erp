@@ -4,6 +4,7 @@ import { centsToDecimalString, toCents } from "@/lib/accounting/money";
 import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
+import { adjustPartyOutstanding } from "@/lib/parties/outstanding";
 import { nextVoucherNo } from "@/lib/vouchers/service";
 
 import type {
@@ -236,23 +237,6 @@ async function syncVoucherGl(
     },
   });
   return voucher.id;
-}
-
-async function adjustPartyOutstanding(
-  tx: Prisma.TransactionClient,
-  args: { partyId: bigint; companyId: bigint; deltaCents: number },
-): Promise<void> {
-  const party = await tx.party.findFirst({
-    where: { id: args.partyId, companyId: args.companyId },
-  });
-  if (!party) return;
-  const current = toCents(party.outstandingAmount?.toString() ?? "0") ?? 0;
-  await tx.party.update({
-    where: { id: party.id },
-    data: {
-      outstandingAmount: centsToDecimalString(Math.max(0, current + args.deltaCents)),
-    },
-  });
 }
 
 export async function listSalesInvoices(

@@ -157,6 +157,32 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
     );
   }
 
+  let debtorSeq = 0;
+  for (const party of partyRows) {
+    if (party.partyType === "Creditor") continue;
+    debtorSeq += 1;
+    const code = `1010-${String(debtorSeq).padStart(3, "0")}`;
+    const named = await prisma.account.create({
+      data: {
+        companyId: company.id,
+        code,
+        name: party.name,
+        accountType: "Asset",
+        accountGroup: "Current Assets",
+        bsSection: "TradeDebtors",
+        plSection: "None",
+        cfLink: "None",
+        normalBalance: "Debit",
+        isActive: true,
+      },
+    });
+    await prisma.party.update({
+      where: { id: party.id },
+      data: { accountId: named.id },
+    });
+    byCode[code] = named.id;
+  }
+
   const cash = byCode["1001"];
   const bank = byCode["1002"];
   const debtors = byCode["1010"];
@@ -326,7 +352,12 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
       lines: {
         create: [
           { accountId: bank, debit: "400000.00", credit: "0.00", lineNarration: "HBL receipt" },
-          { accountId: debtors, debit: "0.00", credit: "400000.00", lineNarration: "Reduce receivable" },
+          {
+            accountId: byCode["1010-001"] ?? debtors,
+            debit: "0.00",
+            credit: "400000.00",
+            lineNarration: "Reduce receivable (Horizon Textiles)",
+          },
         ],
       },
     },
