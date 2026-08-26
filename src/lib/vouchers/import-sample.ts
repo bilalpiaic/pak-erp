@@ -31,8 +31,8 @@ export const VOUCHER_IMPORT_SAMPLE_CSV = [
   "CRV-SAMPLE-1,CRV,2025-03-12,,,Walk-in Customer,,no,Cash sale receipt,4001,0,18000.00,Taxable sales,DRAFT",
   "BPV-SAMPLE-1,BPV,2025-03-18,,PO-441,Cotton Mills Supply Co,1122334-5,yes,Partial payment to supplier,2001,75000.00,0,Settle trade creditors,DRAFT",
   "BPV-SAMPLE-1,BPV,2025-03-18,,PO-441,Cotton Mills Supply Co,1122334-5,yes,Partial payment to supplier,1002,0,75000.00,HBL payment,DRAFT",
-  'JV-SAMPLE-1,JV,2025-03-25,,,,no,"Salaries and factory rent (accrual)",6001,85000.00,0,Payroll,DRAFT',
-  'JV-SAMPLE-1,JV,2025-03-25,,,,no,"Salaries and factory rent (accrual)",6002,40000.00,0,Unit rent,DRAFT',
-  'JV-SAMPLE-1,JV,2025-03-25,,,,no,"Salaries and factory rent (accrual)",2002,0,125000.00,Accrued liabilities,DRAFT',
+  'JV-SAMPLE-1,JV,2025-03-25,,,,,no,Salaries and factory rent (accrual),6001,85000.00,0,Payroll,DRAFT',
+  'JV-SAMPLE-1,JV,2025-03-25,,,,,no,Salaries and factory rent (accrual),6002,40000.00,0,Unit rent,DRAFT',
+  'JV-SAMPLE-1,JV,2025-03-25,,,,,no,Salaries and factory rent (accrual),2002,0,125000.00,Accrued liabilities,DRAFT',
   "",
 ].join("\n");

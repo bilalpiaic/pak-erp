@@ -73,6 +73,9 @@ export async function POST(request: Request) {
     if (!csvText.trim()) {
       return NextResponse.json({ error: "Upload a CSV file or paste CSV text." }, { status: 400 });
     }
+    if (Buffer.byteLength(csvText, "utf8") > MAX_CSV_BYTES) {
+      return NextResponse.json({ error: "CSV file exceeds the 2 MB limit." }, { status: 400 });
+    }
 
     const result = await importVouchersFromCsv(csvText, { dryRun, postBalanced }, actor);
     const status = result.failed && !result.created ? 400 : 200;
