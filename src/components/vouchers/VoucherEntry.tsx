@@ -7,6 +7,7 @@ import { PrintButton } from "@/components/print/PrintButton";
 import { OriginLink } from "@/components/ui/OriginLink";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { VoucherForm } from "@/components/vouchers/VoucherForm";
+import { VoucherImportModal } from "@/components/vouchers/VoucherImportModal";
 import type { AccountDTO } from "@/lib/accounts/types";
 import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
@@ -64,6 +65,7 @@ export function VoucherEntry({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
     const targetId = openVoucher?.id ?? openVoucherId;
@@ -292,6 +294,13 @@ export function VoucherEntry({
             <option value="CANCELLED">CANCELLED</option>
           </select>
           <PrintButton disabled={filtered.length === 0} />
+          <button
+            type="button"
+            onClick={() => setShowImport(true)}
+            className="btn-secondary"
+          >
+            Import CSV
+          </button>
           <span className="text-xs text-[var(--muted-strong)]">
             {pending ? "Refreshing…" : `${filtered.length} vouchers`}
           </span>
@@ -446,6 +455,19 @@ export function VoucherEntry({
           </tbody>
         </table>
       </div>
+      {showImport ? (
+        <VoucherImportModal
+          onClose={() => setShowImport(false)}
+          onImported={(result) => {
+            setMessage(
+              `Imported ${result.created} voucher${result.created === 1 ? "" : "s"}` +
+                (result.posted ? ` (${result.posted} posted)` : "") +
+                (result.failed ? `, ${result.failed} failed` : ""),
+            );
+            refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

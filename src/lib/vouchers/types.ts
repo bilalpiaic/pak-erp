@@ -25,6 +25,8 @@ export type VoucherLineInput = {
 export type VoucherInput = {
   voucherType: VoucherTypeValue;
   voucherDate: string; // YYYY-MM-DD
+  /** Optional explicit number; allocated automatically when omitted. */
+  voucherNo?: string | null;
   referenceNo?: string | null;
   partyId?: string | null;
   partyName?: string | null;

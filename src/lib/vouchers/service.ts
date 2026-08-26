@@ -303,7 +303,17 @@ export async function createDraftVoucher(
   }
 
   const voucherDate = parseVoucherDate(input.voucherDate)!;
-  const voucherNo = await nextVoucherNo(input.voucherType, companyId);
+  const requestedNo = input.voucherNo?.trim() ?? "";
+  if (requestedNo) {
+    const clash = await prisma.voucher.findUnique({
+      where: { companyId_voucherNo: { companyId, voucherNo: requestedNo } },
+      select: { id: true },
+    });
+    if (clash) {
+      throw new Error(`Voucher number ${requestedNo} already exists.`);
+    }
+  }
+  const voucherNo = requestedNo || (await nextVoucherNo(input.voucherType, companyId));
 
   const created = await prisma.$transaction(async (tx) => {
     const voucher = await tx.voucher.create({
