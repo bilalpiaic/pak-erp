@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
 import { useFiscalYear } from "@/components/fiscal-year/FiscalYearProvider";
+import { PartyLedgerPrint } from "@/components/party-ledger/PartyLedgerPrint";
 import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { PartyDTO } from "@/lib/parties/types";
@@ -143,17 +144,18 @@ export function PartyLedgerView({
         <button type="button" disabled={pending} onClick={load} className="btn-primary">
           {pending ? "Loading…" : "Apply"}
         </button>
-        <PrintButton disabled={!data} />
+        <PrintButton disabled={!data} orientation="landscape" />
       </div>
 
       {error ? (
-        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
+        <p className="no-print border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
 
       {data ? (
-        <div className="border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
+        <>
+        <div className="no-print border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
           <div className="mb-4 border-b border-[var(--border)] pb-3">
             <div className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
               {data.kind === "debtor" ? "Debtor Ledger" : "Creditor Ledger"}
@@ -277,6 +279,10 @@ export function PartyLedgerView({
             </tfoot>
           </table>
         </div>
+        <div className="print-only">
+          <PartyLedgerPrint data={data} />
+        </div>
+        </>
       ) : (
         <p className="text-sm text-[var(--muted)]">
           Select a party and click Apply to view and print the individual ledger.

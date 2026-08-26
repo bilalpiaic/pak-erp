@@ -168,6 +168,19 @@ a {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 8mm 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
   aside,
   .no-print,
   [data-sidebar],
@@ -179,9 +192,17 @@ a {
     display: block !important;
   }
 
-  body {
-    background: #fff !important;
-    color: #000 !important;
+  .app-shell,
+  .app-shell-main,
+  .page-shell {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .data-table th {
@@ -194,20 +215,248 @@ a {
   }
 
   .sales-invoice-print,
-  .voucher-print {
+  .voucher-print,
+  .print-sheet {
     border: none !important;
     background: #fff !important;
     color: #000 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
   }
 
   .origin-link {
     color: #000 !important;
-    text-decoration: underline;
+    text-decoration: none !important;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
   }
 }
 
 .print-only {
   display: none;
+}
+
+/* A4 print document */
+.print-sheet {
+  color: #111;
+  background: #fff;
+}
+
+.print-letterhead {
+  text-align: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1.5pt solid #222;
+}
+
+.print-letterhead-name {
+  font-family: var(--font-libre-baskerville), Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.print-letterhead-meta {
+  font-size: 9px;
+  color: #444;
+  line-height: 1.35;
+  margin-top: 1px;
+}
+
+.print-letterhead-title {
+  font-family: var(--font-libre-baskerville), Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 8px 0 2px;
+}
+
+.print-letterhead-sub,
+.print-letterhead-period,
+.print-letterhead-extra {
+  font-size: 9px;
+  color: #333;
+  line-height: 1.3;
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.print-table th,
+.print-table td {
+  padding: 3px 4px;
+  border: 0.4pt solid #888;
+  vertical-align: top;
+}
+
+.print-table th {
+  background: #eee;
+  color: #111;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+
+.print-table .num,
+.print-table td.num,
+.print-table th.num {
+  text-align: right;
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-table .indent {
+  padding-left: 12px;
+}
+
+.print-table .bold {
+  font-weight: 700;
+}
+
+.print-table .section-head td {
+  background: #f3f3f3;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 8px;
+}
+
+.print-table .total-row td {
+  font-weight: 700;
+  border-top: 1pt solid #222;
+  background: #f7f7f7;
+}
+
+.print-table thead {
+  display: table-header-group;
+}
+
+.print-table tfoot {
+  display: table-footer-group;
+}
+
+.print-table tr {
+  page-break-inside: avoid;
+}
+
+.print-amount {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.print-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.print-col-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 0.8pt solid #222;
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.print-status {
+  text-align: center;
+  font-size: 9px;
+  margin-top: 8px;
+}
+
+.print-footer {
+  margin-top: 16px;
+  page-break-inside: avoid;
+}
+
+.print-signatures {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.print-sign-line {
+  border-top: 0.6pt solid #444;
+  padding-top: 4px;
+  font-size: 8px;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.print-printed-note {
+  margin-top: 10px;
+  font-size: 8px;
+  color: #666;
+  text-align: right;
+}
+
+.print-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.print-kpi {
+  border: 0.4pt solid #888;
+  padding: 5px 6px;
+}
+
+.print-kpi-label {
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+}
+
+.print-kpi-value {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+@media print {
+  .print-letterhead,
+  .print-footer,
+  .print-kpi-grid,
+  .print-two-col {
+    page-break-inside: avoid;
+  }
+
+  .print-table th {
+    background: #eee !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-table .section-head td,
+  .print-table .total-row td {
+    background: #f3f3f3 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
 
 @media (max-width: 767px) {

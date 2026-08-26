@@ -91,7 +91,7 @@ export function CompanySettingsForm({ company, fiscalYear }: CompanySettingsForm
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <div className="no-print flex justify-end">
-        <PrintButton />
+        <PrintButton orientation="portrait" />
       </div>
       <div className="border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
         <h2 className="mb-4 text-sm font-semibold text-[var(--accent)]">Company Information</h2>

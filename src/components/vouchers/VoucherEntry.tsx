@@ -7,6 +7,7 @@ import { PrintButton } from "@/components/print/PrintButton";
 import { OriginLink } from "@/components/ui/OriginLink";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { VoucherForm } from "@/components/vouchers/VoucherForm";
+import { VoucherRegisterPrint } from "@/components/vouchers/VoucherRegisterPrint";
 import type { AccountDTO } from "@/lib/accounts/types";
 import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
@@ -291,7 +292,7 @@ export function VoucherEntry({
             <option value="POSTED">POSTED</option>
             <option value="CANCELLED">CANCELLED</option>
           </select>
-          <PrintButton disabled={filtered.length === 0} />
+          <PrintButton disabled={filtered.length === 0} orientation="landscape" />
           <span className="text-xs text-[var(--muted-strong)]">
             {pending ? "Refreshing…" : `${filtered.length} vouchers`}
           </span>
@@ -299,17 +300,17 @@ export function VoucherEntry({
       </div>
 
       {message ? (
-        <p className="text-sm text-[var(--success)]" role="status">
+        <p className="no-print text-sm text-[var(--success)]" role="status">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-[var(--danger)]" role="alert">
+        <p className="no-print text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
 
-      <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
+      <div className="no-print overflow-auto border border-[var(--border)] bg-[var(--panel)]">
         <table className="w-full min-w-[860px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
@@ -445,6 +446,18 @@ export function VoucherEntry({
             )}
           </tbody>
         </table>
+      </div>
+      <div className="print-only">
+        <VoucherRegisterPrint
+          vouchers={filtered}
+          filters={[
+            search.trim() ? `Search: ${search.trim()}` : null,
+            typeFilter !== "All" ? `Type: ${typeFilter}` : null,
+            statusFilter !== "All" ? `Status: ${statusFilter}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || null}
+        />
       </div>
     </div>
   );

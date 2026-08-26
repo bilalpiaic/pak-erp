@@ -51,7 +51,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`flex h-full w-[220px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] lg:w-[240px] ${className}`}
+      className={`no-print flex h-full w-[220px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] lg:w-[240px] ${className}`}
     >
       <div className="border-b border-[var(--border)] px-3.5 py-4">
         <div className="flex items-start gap-2.5">

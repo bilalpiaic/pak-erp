@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
 import { useFiscalYear } from "@/components/fiscal-year/FiscalYearProvider";
+import { LedgerPrint } from "@/components/ledger/LedgerPrint";
 import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { LedgerResult } from "@/lib/ledger/service";
@@ -96,18 +97,18 @@ export function LedgerView({
         <button type="button" disabled={pending} onClick={load} className="btn-primary">
           {pending ? "Loading…" : "Apply"}
         </button>
-        <PrintButton disabled={!data} />
+        <PrintButton disabled={!data} orientation="landscape" />
       </div>
 
       {error ? (
-        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
+        <p className="no-print border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
 
       {data ? (
         <>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="no-print grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <Stat
               label="Account"
               value={`${data.account.code} — ${data.account.name}`}
@@ -136,7 +137,7 @@ export function LedgerView({
             />
           </div>
 
-          <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
+          <div className="no-print overflow-auto border border-[var(--border)] bg-[var(--panel)]">
             <table className="data-table">
               <thead>
                 <tr>
@@ -230,6 +231,9 @@ export function LedgerView({
                 </tr>
               </tfoot>
             </table>
+          </div>
+          <div className="print-only">
+            <LedgerPrint data={data} />
           </div>
         </>
       ) : null}

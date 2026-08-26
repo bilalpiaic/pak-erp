@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { PrintButton } from "@/components/print/PrintButton";
 import { OriginLink } from "@/components/ui/OriginLink";
+import { PartiesPrint } from "@/components/parties/PartiesPrint";
 import { formatCurrency } from "@/lib/formatting/money";
 import { partyKindFromType, partyLedgerHref } from "@/lib/links";
 import {
@@ -217,22 +218,22 @@ export function PartiesView({
         <button type="button" className="btn-secondary" disabled={pending} onClick={refresh}>
           Refresh
         </button>
-        <PrintButton />
+        <PrintButton orientation="landscape" />
       </div>
 
       {error ? (
-        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
+        <p className="no-print border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
       {message ? (
-        <p className="border border-emerald-900/60 bg-emerald-950/30 px-3 py-2 text-sm text-[var(--success)]">
+        <p className="no-print border border-emerald-900/60 bg-emerald-950/30 px-3 py-2 text-sm text-[var(--success)]">
           {message}
         </p>
       ) : null}
 
       {(creating || editing) && (
-        <div className="border border-[var(--border)] bg-[var(--panel)] p-4">
+        <div className="no-print border border-[var(--border)] bg-[var(--panel)] p-4">
           <div className="mb-3 text-sm font-semibold text-[var(--accent)]">
             {editing ? "Edit party" : "New party"}
           </div>
@@ -331,7 +332,7 @@ export function PartiesView({
         </div>
       )}
 
-      <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
+      <div className="no-print overflow-auto border border-[var(--border)] bg-[var(--panel)]">
         <table className="data-table">
           <thead>
             <tr>
@@ -411,6 +412,17 @@ export function PartiesView({
             )}
           </tbody>
         </table>
+      </div>
+      <div className="print-only">
+        <PartiesPrint
+          parties={filtered}
+          filters={[
+            search.trim() ? `Search: ${search.trim()}` : null,
+            type !== "All" ? `Type: ${type}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || null}
+        />
       </div>
     </div>
   );

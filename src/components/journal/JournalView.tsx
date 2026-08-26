@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { PrintButton } from "@/components/print/PrintButton";
 import { useFiscalYear } from "@/components/fiscal-year/FiscalYearProvider";
+import { JournalPrint } from "@/components/journal/JournalPrint";
 import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { JournalLineDTO, JournalResult } from "@/lib/journal/service";
@@ -143,16 +144,16 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
         >
           Export CSV
         </button>
-        <PrintButton />
+        <PrintButton orientation="landscape" />
       </div>
 
       {error ? (
-        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
+        <p className="no-print border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
 
-      <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
+      <div className="no-print overflow-auto border border-[var(--border)] bg-[var(--panel)]">
         <table className="data-table">
           <thead>
             <tr>
@@ -248,6 +249,11 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
           ) : null}
         </table>
       </div>
+      {data ? (
+        <div className="print-only">
+          <JournalPrint data={data} voucherType={type} search={search} />
+        </div>
+      ) : null}
     </div>
   );
 }

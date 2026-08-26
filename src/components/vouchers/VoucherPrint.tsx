@@ -1,8 +1,11 @@
 "use client";
 
+import { PrintAmount } from "@/components/print/PrintAmount";
+import { PrintLetterhead } from "@/components/print/PrintLetterhead";
+import { PrintSignatures } from "@/components/print/PrintSignatures";
 import { OriginLink } from "@/components/ui/OriginLink";
 import type { CompanyDTO } from "@/lib/company/types";
-import { formatCurrency } from "@/lib/formatting/money";
+import { companyPrintInfoFromDto } from "@/lib/print/company";
 import { accountLedgerHref, partyLedgerHref } from "@/lib/links";
 import {
   VOUCHER_TYPE_LABELS,
@@ -37,6 +40,7 @@ type VoucherPrintProps = {
 };
 
 export function VoucherPrint({
+  company,
   voucherNo,
   voucherType,
   voucherDate,
@@ -53,15 +57,13 @@ export function VoucherPrint({
   totalCredit,
 }: VoucherPrintProps) {
   return (
-    <div className="voucher-print border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-6">
-      <div className="mb-4 border-b border-[var(--border)] pb-3">
-        <div className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
-          {VOUCHER_TYPE_LABELS[voucherType] ?? voucherType}
-        </div>
-        {status ? (
-          <div className="mt-1 text-xs text-[var(--muted)]">Status: {status}</div>
-        ) : null}
-      </div>
+    <div className="voucher-print print-sheet print-sheet-portrait border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-6">
+      <PrintLetterhead
+        company={companyPrintInfoFromDto(company)}
+        title={VOUCHER_TYPE_LABELS[voucherType] ?? voucherType}
+        subtitle={status ? `Status: ${status}` : null}
+        extra={`Voucher ${voucherNo} · ${voucherDate}${referenceNo ? ` · Ref ${referenceNo}` : ""}`}
+      />
 
       <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
         <div className="space-y-1">
@@ -110,14 +112,14 @@ export function VoucherPrint({
         </div>
       </div>
 
-      <table className="data-table w-full min-w-[720px] border-collapse text-left">
+      <table className="print-table data-table w-full border-collapse text-left">
         <thead>
           <tr>
             <th>#</th>
             <th>Account</th>
             <th>Narration</th>
-            <th className="text-right">Debit</th>
-            <th className="text-right">Credit</th>
+            <th className="num text-right">Debit</th>
+            <th className="num text-right">Credit</th>
           </tr>
         </thead>
         <tbody>
@@ -155,15 +157,11 @@ export function VoucherPrint({
                   )}
                 </td>
                 <td className="text-xs text-[var(--muted)]">{line.lineNarration || "—"}</td>
-                <td className="text-right font-mono text-xs">
-                  {!line.debit || line.debit === "0" || line.debit === "0.00"
-                    ? "—"
-                    : formatCurrency(line.debit)}
+                <td className="num text-right font-mono text-xs">
+                  <PrintAmount value={line.debit} blankZero />
                 </td>
-                <td className="text-right font-mono text-xs">
-                  {!line.credit || line.credit === "0" || line.credit === "0.00"
-                    ? "—"
-                    : formatCurrency(line.credit)}
+                <td className="num text-right font-mono text-xs">
+                  <PrintAmount value={line.credit} blankZero />
                 </td>
               </tr>
             ))
@@ -174,27 +172,17 @@ export function VoucherPrint({
             <td colSpan={3} className="text-right font-semibold">
               Totals
             </td>
-            <td className="text-right font-mono text-sm font-semibold">
-              {formatCurrency(totalDebit)}
+            <td className="num text-right font-mono text-sm font-semibold">
+              <PrintAmount value={totalDebit} />
             </td>
-            <td className="text-right font-mono text-sm font-semibold">
-              {formatCurrency(totalCredit)}
+            <td className="num text-right font-mono text-sm font-semibold">
+              <PrintAmount value={totalCredit} />
             </td>
           </tr>
         </tfoot>
       </table>
 
-      <div className="mt-8 grid gap-8 text-xs text-[var(--muted)] sm:grid-cols-3">
-        <div>
-          <div className="mb-8 border-b border-[var(--border)] pb-1">Prepared by</div>
-        </div>
-        <div>
-          <div className="mb-8 border-b border-[var(--border)] pb-1">Checked by</div>
-        </div>
-        <div>
-          <div className="mb-8 border-b border-[var(--border)] pb-1">Approved by</div>
-        </div>
-      </div>
+      <PrintSignatures />
     </div>
   );
 }
