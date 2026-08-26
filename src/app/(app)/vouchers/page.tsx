@@ -46,7 +46,7 @@ export default async function VouchersPage({
   return (
     <PageShell
       title="Voucher Entry"
-      description="Create, post, and (for Administrators) unpost vouchers so they can be edited or deleted. Posted documents stay in the ledger until unposted or cancelled."
+      description="Create, post, and (for Administrators) unpost vouchers so they can be edited or deleted. Import many vouchers from CSV. Posted documents stay in the ledger until unposted or cancelled."
     >
       <VoucherEntry
         initialVouchers={vouchers}

@@ -112,6 +112,13 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Chart of Accounts add / edit / deactivate / delete is Administrator-only; unused accounts can be deleted
 - Audit log records `UNPOST` and `DELETE`
 
+### Phase 15 — Voucher CSV import
+
+- Bulk import BPV / BRV / CPV / CRV / JV from CSV (one row per line, grouped by `voucher_key`)
+- Sample + template files under `public/samples/`
+- Validate-then-import on Voucher Entry; optional post of balanced vouchers
+- `/api/vouchers/import`
+
 The legacy single-file prototype lives in `legacy/index.html`.
 
 ## Getting started
