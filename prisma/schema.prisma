@@ -92,10 +92,13 @@ model Party {
   outstandingDays  Int?      @map("outstanding_days")
   outstandingAmount Decimal? @default(0.00) @map("outstanding_amount") @db.Decimal(18, 2)
   whtStatus        String?   @map("wht_status") @db.VarChar(20)
+  /// Named Trade Debtors GL head for this party (sub-ledger). Null for creditors.
+  accountId        BigInt?   @unique @map("account_id")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   company       Company        @relation(fields: [companyId], references: [id])
+  account       Account?       @relation(fields: [accountId], references: [id])
   vouchers      Voucher[]
   salesInvoices SalesInvoice[]
 
@@ -140,6 +143,7 @@ model Account {
 
   company      Company       @relation(fields: [companyId], references: [id])
   voucherLines VoucherLine[]
+  party        Party?
 
   @@unique([companyId, code])
   @@index([companyId])

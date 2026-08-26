@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { AccountFormModal } from "@/components/accounts/AccountFormModal";
+import { AccountLov } from "@/components/accounts/AccountLov";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
 import { PrintButton } from "@/components/print/PrintButton";
@@ -44,6 +45,54 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isReceiptType(type: VoucherTypeValue): boolean {
+  return type === "BRV" || type === "CRV";
+}
+
+function pickReceiptDebitAccount(
+  voucherType: VoucherTypeValue,
+  accounts: AccountDTO[],
+): AccountDTO | undefined {
+  const cashBank = accounts.filter((a) => a.isActive && a.bsSection === "CashAndBank");
+  if (voucherType === "CRV") {
+    return cashBank.find((a) => a.code === "1001") ?? cashBank[0];
+  }
+  if (voucherType === "BRV") {
+    return (
+      cashBank.find((a) => a.code === "1002") ??
+      cashBank.find((a) => a.code !== "1001") ??
+      cashBank[0]
+    );
+  }
+  return undefined;
+}
+
+function defaultLines(
+  voucherType: VoucherTypeValue,
+  accounts: AccountDTO[],
+  initial?: VoucherDTO | null,
+): LineDraft[] {
+  if (initial?.lines.length) {
+    return initial.lines.map((line) => ({
+      accountId: line.accountId,
+      debit: line.debit === "0.00" ? "" : line.debit,
+      credit: line.credit === "0.00" ? "" : line.credit,
+      lineNarration: line.lineNarration ?? "",
+    }));
+  }
+  if (isReceiptType(voucherType)) {
+    const debitAccount = pickReceiptDebitAccount(voucherType, accounts);
+    return [
+      { accountId: debitAccount?.id ?? "", debit: "", credit: "", lineNarration: "" },
+      { accountId: "", debit: "", credit: "", lineNarration: "" },
+    ];
+  }
+  return [
+    { accountId: "", debit: "", credit: "", lineNarration: "" },
+    { accountId: "", debit: "", credit: "", lineNarration: "" },
+  ];
+}
+
 export function VoucherForm({
   mode,
   voucherType,
@@ -68,6 +117,10 @@ export function VoucherForm({
   const [accountOptions, setAccountOptions] = useState(initialAccounts);
   const [showPartyModal, setShowPartyModal] = useState(false);
   const [accountModalLine, setAccountModalLine] = useState<number | null>(null);
+  const [autoDebtorAccountId, setAutoDebtorAccountId] = useState<string | null>(
+    null,
+  );
+  const [partyId, setPartyId] = useState(initial?.partyId ?? "");
 
   const activeAccounts = useMemo(
     () =>
@@ -79,26 +132,28 @@ export function VoucherForm({
       partyOptions.filter((p) => p.isActive).sort((a, b) => a.name.localeCompare(b.name)),
     [partyOptions],
   );
+  const partiesForVoucher = useMemo(() => {
+    let list =
+      voucherType === "BRV" || voucherType === "CRV"
+        ? activeParties.filter((p) => p.partyType !== "Creditor")
+        : voucherType === "BPV" || voucherType === "CPV"
+          ? activeParties.filter((p) => p.partyType !== "Debtor")
+          : activeParties;
+    if (partyId && !list.some((p) => p.id === partyId)) {
+      const extra = activeParties.find((p) => p.id === partyId);
+      if (extra) list = [...list, extra];
+    }
+    return list;
+  }, [activeParties, voucherType, partyId]);
 
   const [voucherDate, setVoucherDate] = useState(initial?.voucherDate ?? todayIso());
   const [referenceNo, setReferenceNo] = useState(initial?.referenceNo ?? "");
-  const [partyId, setPartyId] = useState(initial?.partyId ?? "");
   const [partyName, setPartyName] = useState(initial?.partyName ?? "");
   const [partyNtn, setPartyNtn] = useState(initial?.partyNtn ?? "");
   const [whtApplicable, setWhtApplicable] = useState(Boolean(initial?.whtApplicable));
   const [narration, setNarration] = useState(initial?.narration ?? "");
-  const [lines, setLines] = useState<LineDraft[]>(
-    initial?.lines.length
-      ? initial.lines.map((line) => ({
-          accountId: line.accountId,
-          debit: line.debit === "0.00" ? "" : line.debit,
-          credit: line.credit === "0.00" ? "" : line.credit,
-          lineNarration: line.lineNarration ?? "",
-        }))
-      : [
-          { accountId: "", debit: "", credit: "", lineNarration: "" },
-          { accountId: "", debit: "", credit: "", lineNarration: "" },
-        ],
+  const [lines, setLines] = useState<LineDraft[]>(() =>
+    defaultLines(voucherType, initialAccounts, initial),
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -148,12 +203,66 @@ export function VoucherForm({
     };
   }
 
+  function applyNamedDebtorCredit(accountId: string) {
+    const cashBankIds = new Set(
+      accountOptions.filter((a) => a.bsSection === "CashAndBank").map((a) => a.id),
+    );
+    setLines((prev) => {
+      const next = prev.map((line) => ({ ...line }));
+      let idx = next.findIndex((line) => line.accountId === autoDebtorAccountId);
+      if (idx < 0) {
+        idx = next.findIndex(
+          (line, i) =>
+            i > 0 &&
+            !cashBankIds.has(line.accountId) &&
+            !line.debit &&
+            (line.accountId === "" || i === 1),
+        );
+      }
+      if (idx < 0) {
+        next.push({ accountId, debit: "", credit: "", lineNarration: "" });
+      } else {
+        next[idx] = { ...next[idx], accountId };
+      }
+      return next;
+    });
+    setAutoDebtorAccountId(accountId);
+  }
+
+  async function attachDebtorAccount(party: PartyDTO) {
+    if (!isReceiptType(voucherType) || party.partyType === "Creditor") return;
+    try {
+      const response = await fetch(`/api/parties/${party.id}/debtor-account`, {
+        method: "POST",
+      });
+      const data = (await response.json()) as {
+        party?: PartyDTO;
+        account?: AccountDTO;
+        error?: string;
+      };
+      if (!response.ok || !data.party?.accountId || !data.account) {
+        setError(data.error ?? "Unable to create named debtor account.");
+        return;
+      }
+      setPartyOptions((prev) => prev.map((p) => (p.id === party.id ? data.party! : p)));
+      setAccountOptions((prev) =>
+        prev.some((a) => a.id === data.account!.id) ? prev : [...prev, data.account!],
+      );
+      applyNamedDebtorCredit(data.party.accountId);
+    } catch {
+      setError("Unable to attach named debtor account.");
+    }
+  }
+
   function selectParty(id: string) {
     setPartyId(id);
     const party = activeParties.find((p) => p.id === id);
     if (party) {
       setPartyName(party.name);
       setPartyNtn(party.ntn ?? "");
+      void attachDebtorAccount(party);
+    } else {
+      setAutoDebtorAccountId(null);
     }
   }
 
@@ -165,6 +274,7 @@ export function VoucherForm({
     setPartyName(party.name);
     setPartyNtn(party.ntn ?? "");
     setShowPartyModal(false);
+    void attachDebtorAccount(party);
   }
 
   function handleAccountCreated(account: AccountDTO) {
@@ -389,12 +499,18 @@ export function VoucherForm({
               className="field-input"
             >
               <option value="">— Free-text / none —</option>
-              {activeParties.map((p) => (
+              {partiesForVoucher.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} ({p.partyType})
+                  {p.name} ({p.partyType}
+                  {p.accountCode ? ` · ${p.accountCode}` : ""})
                 </option>
               ))}
             </select>
+            {isReceiptType(voucherType) ? (
+              <p className="mt-1 text-[10px] text-[var(--muted-strong)]">
+                Debtor party credits their named COA (1010-001 …), not control 1010.
+              </p>
+            ) : null}
           </div>
           <label className="block md:col-span-1">
             <span className="mb-1.5 block text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
@@ -452,7 +568,7 @@ export function VoucherForm({
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span>Account</span>
+                  <span>Account (LOV / F5)</span>
                   {!readOnly && isAdmin ? (
                     <button
                       type="button"
@@ -486,18 +602,13 @@ export function VoucherForm({
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
-                        <select
+                        <AccountLov
+                          accounts={activeAccounts}
                           value={line.accountId}
-                          onChange={(e) => updateLine(index, "accountId", e.target.value)}
-                          className="field-input flex-1"
-                        >
-                          <option value="">-- Select --</option>
-                          {activeAccounts.map((accountOption) => (
-                            <option key={accountOption.id} value={accountOption.id}>
-                              {accountOption.code} — {accountOption.name}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(accountId) =>
+                            updateLine(index, "accountId", accountId)
+                          }
+                        />
                         {isAdmin ? (
                           <button
                             type="button"
@@ -678,7 +789,16 @@ export function VoucherForm({
 
       {showPartyModal ? (
         <PartyCreateModal
-          defaultPartyType="Both"
+          defaultPartyType={
+            voucherType === "BPV" || voucherType === "CPV" ? "Creditor" : "Debtor"
+          }
+          allowedTypes={
+            voucherType === "BRV" || voucherType === "CRV"
+              ? ["Debtor", "Both"]
+              : voucherType === "BPV" || voucherType === "CPV"
+                ? ["Creditor", "Both"]
+                : undefined
+          }
           onClose={() => setShowPartyModal(false)}
           onCreated={handlePartyCreated}
         />

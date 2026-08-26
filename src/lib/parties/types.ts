@@ -14,6 +14,10 @@ export type PartyDTO = {
   outstandingDays: number | null;
   outstandingAmount: string;
   whtStatus: string | null;
+  /** Named Trade Debtors GL head (sub-ledger). Null for creditors. */
+  accountId: string | null;
+  accountCode: string | null;
+  accountName: string | null;
   createdAt: string;
   updatedAt: string;
 };

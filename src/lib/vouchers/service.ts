@@ -9,6 +9,8 @@ import { centsToDecimalString, isBalanced, sumCents, toCents } from "@/lib/accou
 import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
+import { ACCOUNT_CODES } from "@/lib/accounts/codes";
+import { adjustPartyOutstanding } from "@/lib/parties/outstanding";
 
 import {
   VOUCHER_TYPES,
@@ -22,7 +24,13 @@ import { parseVoucherDate, validateVoucherInput } from "./validation";
 type VoucherWithLines = Voucher & {
   lines: Array<
     VoucherLine & {
-      account: { id: bigint; code: string; name: string; isActive: boolean };
+      account: {
+        id: bigint;
+        code: string;
+        name: string;
+        isActive: boolean;
+        bsSection: string;
+      };
     }
   >;
   attachments: VoucherAttachment[];
@@ -95,7 +103,7 @@ const voucherInclude = {
   lines: {
     include: {
       account: {
-        select: { id: true, code: true, name: true, isActive: true },
+        select: { id: true, code: true, name: true, isActive: true, bsSection: true },
       },
     },
     orderBy: { id: "asc" as const },
@@ -222,6 +230,54 @@ function assertManualVoucher(voucher: {
       "Sales invoices must be unposted or deleted from Sales Invoices so the invoice and ledger stay in sync.",
     );
   }
+}
+
+function isReceiptVoucher(type: string): boolean {
+  return type === "BRV" || type === "CRV";
+}
+
+/** Net credit to Trade Debtors (control 1010 or named 1010-NNN). */
+function tradeDebtorsNetCreditCents(voucher: VoucherWithLines): number {
+  let net = 0;
+  for (const line of voucher.lines) {
+    if (line.account.bsSection !== "TradeDebtors") continue;
+    net += (toCents(line.credit.toString()) ?? 0) - (toCents(line.debit.toString()) ?? 0);
+  }
+  return net;
+}
+
+async function applyReceiptOutstanding(
+  tx: Prisma.TransactionClient,
+  voucher: VoucherWithLines,
+  sign: 1 | -1,
+): Promise<void> {
+  if (!isReceiptVoucher(voucher.voucherType)) return;
+  const netCredit = tradeDebtorsNetCreditCents(voucher);
+  if (netCredit === 0) return;
+
+  let partyId = voucher.partyId;
+  if (!partyId) {
+    const namedIds = voucher.lines
+      .filter(
+        (line) =>
+          line.account.bsSection === "TradeDebtors" &&
+          line.account.code !== ACCOUNT_CODES.TRADE_DEBTORS,
+      )
+      .map((line) => line.accountId);
+    if (namedIds.length) {
+      const linked = await tx.party.findMany({
+        where: { companyId: voucher.companyId, accountId: { in: namedIds } },
+      });
+      if (linked.length === 1) partyId = linked[0]!.id;
+    }
+  }
+  if (!partyId) return;
+
+  await adjustPartyOutstanding(tx, {
+    partyId,
+    companyId: voucher.companyId,
+    deltaCents: sign * -netCredit,
+  });
 }
 
 export async function createDraftVoucher(
@@ -437,6 +493,8 @@ export async function postVoucher(id: string, actor = "system"): Promise<Voucher
       include: voucherInclude,
     });
 
+    await applyReceiptOutstanding(tx, updated, 1);
+
     await tx.auditLog.create({
       data: {
         companyId,
@@ -485,6 +543,8 @@ export async function cancelVoucher(id: string, actor = "system"): Promise<Vouch
       },
       include: voucherInclude,
     });
+
+    await applyReceiptOutstanding(tx, voucher, -1);
 
     await tx.auditLog.create({
       data: {
@@ -546,6 +606,8 @@ export async function unpostVoucher(id: string, actor = "system"): Promise<Vouch
       },
       include: voucherInclude,
     });
+
+    await applyReceiptOutstanding(tx, voucher, -1);
 
     await tx.auditLog.create({
       data: {

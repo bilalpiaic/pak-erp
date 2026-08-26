@@ -266,6 +266,15 @@ export function PartiesView({
                 ))}
               </select>
             </Field>
+            {editing?.accountCode ? (
+              <Field label="Debtor COA">
+                <input
+                  className="field-input opacity-80"
+                  readOnly
+                  value={`${editing.accountCode} — ${editing.accountName ?? editing.name}`}
+                />
+              </Field>
+            ) : null}
             <Field label="Phone">
               <input
                 className="field-input"
@@ -338,6 +347,7 @@ export function PartiesView({
               <th>Name</th>
               <th>NTN</th>
               <th>Type</th>
+              <th>Debtor COA</th>
               <th className="text-right">Outstanding</th>
               <th className="text-right">Age</th>
               <th>WHT</th>
@@ -348,7 +358,7 @@ export function PartiesView({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-[var(--muted)]">
+                <td colSpan={9} className="py-8 text-center text-[var(--muted)]">
                   No parties found.
                 </td>
               </tr>
@@ -364,6 +374,9 @@ export function PartiesView({
                   </td>
                   <td className="text-[var(--muted)]">{party.ntn ?? "—"}</td>
                   <td>{party.partyType}</td>
+                  <td className="font-mono text-xs text-[var(--accent)]">
+                    {party.accountCode ?? "—"}
+                  </td>
                   <td className="text-right font-mono">
                     {formatCurrency(party.outstandingAmount)}
                   </td>

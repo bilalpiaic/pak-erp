@@ -186,13 +186,23 @@ export function PartyLedgerView({
             </div>
             <div className="sm:text-right">
               <div className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-                Control account
+                {data.account.code !== data.account.controlCode
+                  ? "Named debtor COA"
+                  : "Control account"}
               </div>
               <div className="font-semibold">
                 <OriginLink href={accountLedgerHref(data.account.code)}>
                   {data.account.code} — {data.account.name}
                 </OriginLink>
               </div>
+              {data.account.code !== data.account.controlCode ? (
+                <div className="text-xs text-[var(--muted)]">
+                  Sub-ledger of{" "}
+                  <OriginLink href={accountLedgerHref(data.account.controlCode)}>
+                    {data.account.controlCode} {data.account.controlName}
+                  </OriginLink>
+                </div>
+              ) : null}
               <div className="text-xs text-[var(--muted)]">
                 Opening {formatCurrency(data.opening.balance)} {data.opening.side} · Closing{" "}
                 {formatCurrency(data.closing.balance)} {data.closing.side}
@@ -206,6 +216,7 @@ export function PartyLedgerView({
                 <th>Date</th>
                 <th>Voucher</th>
                 <th>Type</th>
+                <th>A/c</th>
                 <th>Reference</th>
                 <th>Narration</th>
                 <th className="text-right">Debit</th>
@@ -215,7 +226,7 @@ export function PartyLedgerView({
             </thead>
             <tbody>
               <tr>
-                <td colSpan={5} className="font-semibold">
+                <td colSpan={6} className="font-semibold">
                   Opening balance
                 </td>
                 <td className="text-right font-mono text-xs">
@@ -230,7 +241,7 @@ export function PartyLedgerView({
               </tr>
               {data.transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-sm text-[var(--muted)]">
+                    <td colSpan={9} className="py-6 text-center text-sm text-[var(--muted)]">
                     No posted transactions for this party in the selected period.
                   </td>
                 </tr>
@@ -242,6 +253,11 @@ export function PartyLedgerView({
                       <OriginLink href={voucherHref(txn.voucherId)}>{txn.voucherNo}</OriginLink>
                     </td>
                     <td className="text-xs">{txn.voucherType}</td>
+                    <td className="font-mono text-xs text-[var(--accent)]">
+                      <OriginLink href={accountLedgerHref(txn.accountCode)}>
+                        {txn.accountCode}
+                      </OriginLink>
+                    </td>
                     <td className="text-xs text-[var(--muted)]">{txn.referenceNo || "—"}</td>
                     <td className="text-xs">{txn.narration || "—"}</td>
                     <td className="text-right font-mono text-xs">
@@ -260,7 +276,7 @@ export function PartyLedgerView({
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={5} className="font-semibold">
+                <td colSpan={6} className="font-semibold">
                   Period totals ({data.period.count} lines)
                 </td>
                 <td className="text-right font-mono text-xs font-semibold">

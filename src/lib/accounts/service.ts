@@ -420,6 +420,15 @@ export async function deleteAccount(id: string, actor = "system"): Promise<void>
         `Account ${account.code} has voucher lines and cannot be deleted. Deactivate it instead.`,
       );
     }
+    const linkedParty = await tx.party.findFirst({
+      where: { accountId: account.id },
+      select: { name: true },
+    });
+    if (linkedParty) {
+      throw new Error(
+        `Account ${account.code} is the named debtor COA for ${linkedParty.name}. Deactivate it instead.`,
+      );
+    }
 
     await tx.account.delete({ where: { id: accountId } });
 

@@ -1,7 +1,5 @@
 import { ACCOUNT_CODES } from "@/lib/accounts/codes";
 import {
-  aggregatePostedBalances,
-  getDrCr,
   listAccountMeta,
   moneyFromCents,
 } from "@/lib/accounting/balances";
@@ -29,6 +27,7 @@ export type PartyLedgerTxnDTO = {
   voucherId: string;
   voucherNo: string;
   voucherType: VoucherTypeValue;
+  accountCode: string;
   referenceNo: string | null;
   narration: string | null;
   debit: string;
@@ -54,6 +53,8 @@ export type PartyLedgerResult = {
     code: string;
     name: string;
     normalBalance: "Debit" | "Credit";
+    controlCode: string;
+    controlName: string;
   };
   opening: {
     debit: string;
@@ -102,6 +103,7 @@ export async function getPartyLedger(
 
   const party = await prisma.party.findFirst({
     where: { id: partyId, companyId },
+    include: { account: { select: { id: true, code: true, name: true } } },
   });
   if (!party) throw new Error("Party not found.");
 
@@ -113,13 +115,31 @@ export async function getPartyLedger(
     throw new Error("This party is a Debtor — use Debtor ledger.");
   }
 
-  const accountCode =
+  const controlCode =
     kind === "debtor" ? ACCOUNT_CODES.TRADE_DEBTORS : ACCOUNT_CODES.TRADE_CREDITORS;
   const accounts = await listAccountMeta();
-  const account = accounts.find((a) => a.code === accountCode);
-  if (!account) {
-    throw new Error(`Account ${accountCode} not found in chart of accounts.`);
+  const control = accounts.find((a) => a.code === controlCode);
+  if (!control) {
+    throw new Error(`Account ${controlCode} not found in chart of accounts.`);
   }
+
+  const named =
+    kind === "debtor" && party.account
+      ? accounts.find((a) => a.id === party.account!.id.toString()) ?? {
+          id: party.account.id.toString(),
+          code: party.account.code,
+          name: party.account.name,
+          accountType: "Asset",
+          accountGroup: "Current Assets",
+          bsSection: "TradeDebtors",
+          plSection: "None",
+          cfLink: "None",
+          normalBalance: "Debit" as const,
+          isActive: true,
+        }
+      : null;
+
+  const display = named ?? control;
 
   const activeRange = await getActiveDateRange();
   const fromStr = query.from ?? activeRange.from;
@@ -129,55 +149,100 @@ export async function getPartyLedger(
   if (!from || !to) throw new Error("Invalid date range. Use YYYY-MM-DD.");
   if (from > to) throw new Error("From date must be on or before To date.");
 
-  const openingMap = await aggregatePostedBalances({
-    before: fromStr,
-    accountCode,
-    partyId: query.partyId,
+  const dateFilter = { gte: from, lte: to };
+  const openingDateFilter = { lt: from };
+
+  function linesForRange(voucherDate: { gte?: Date; lte?: Date; lt?: Date }) {
+    return {
+      OR: [
+        {
+          account: { code: controlCode },
+          voucher: {
+            companyId,
+            partyId,
+            status: "POSTED" as const,
+            voucherDate,
+          },
+        },
+        ...(named
+          ? [
+              {
+                accountId: BigInt(named.id),
+                voucher: {
+                  companyId,
+                  status: "POSTED" as const,
+                  voucherDate,
+                },
+              },
+            ]
+          : []),
+      ],
+    };
+  }
+
+  const openingLines = await prisma.voucherLine.findMany({
+    where: linesForRange(openingDateFilter),
+    select: { debit: true, credit: true },
   });
-  const opening = getDrCr(openingMap, accountCode);
+
+  let openingDr = 0;
+  let openingCr = 0;
+  for (const line of openingLines) {
+    openingDr += toCents(line.debit.toString()) ?? 0;
+    openingCr += toCents(line.credit.toString()) ?? 0;
+  }
+  const opening = { dr: openingDr, cr: openingCr };
   let run = opening.dr - opening.cr;
 
-  const vouchers = await prisma.voucher.findMany({
-    where: {
-      companyId,
-      partyId,
-      status: "POSTED",
-      voucherDate: { gte: from, lte: to },
-      lines: { some: { account: { code: accountCode } } },
-    },
+  const periodLines = await prisma.voucherLine.findMany({
+    where: linesForRange(dateFilter),
     include: {
-      lines: {
-        where: { account: { code: accountCode } },
-        orderBy: { id: "asc" },
+      account: { select: { code: true } },
+      voucher: {
+        select: {
+          id: true,
+          voucherNo: true,
+          voucherType: true,
+          voucherDate: true,
+          referenceNo: true,
+          narration: true,
+        },
       },
     },
-    orderBy: [{ voucherDate: "asc" }, { voucherNo: "asc" }],
+    orderBy: [{ id: "asc" }],
+  });
+
+  periodLines.sort((a, b) => {
+    const dateCmp = a.voucher.voucherDate.getTime() - b.voucher.voucherDate.getTime();
+    if (dateCmp !== 0) return dateCmp;
+    const noCmp = a.voucher.voucherNo.localeCompare(b.voucher.voucherNo);
+    if (noCmp !== 0) return noCmp;
+    return Number(a.id - b.id);
   });
 
   const transactions: PartyLedgerTxnDTO[] = [];
   let periodDr = 0;
   let periodCr = 0;
 
-  for (const voucher of vouchers) {
-    for (const line of voucher.lines) {
-      const debit = toCents(line.debit.toString()) ?? 0;
-      const credit = toCents(line.credit.toString()) ?? 0;
-      periodDr += debit;
-      periodCr += credit;
-      run += debit - credit;
-      transactions.push({
-        date: voucher.voucherDate.toISOString().slice(0, 10),
-        voucherId: voucher.id.toString(),
-        voucherNo: voucher.voucherNo,
-        voucherType: voucher.voucherType as VoucherTypeValue,
-        referenceNo: voucher.referenceNo,
-        narration: line.lineNarration ?? voucher.narration,
-        debit: centsToDecimalString(debit),
-        credit: centsToDecimalString(credit),
-        runningBalance: moneyFromCents(Math.abs(run)),
-        runningSide: sideFromSigned(run),
-      });
-    }
+  for (const line of periodLines) {
+    const debit = toCents(line.debit.toString()) ?? 0;
+    const credit = toCents(line.credit.toString()) ?? 0;
+    periodDr += debit;
+    periodCr += credit;
+    run += debit - credit;
+    transactions.push({
+      date: line.voucher.voucherDate.toISOString().slice(0, 10),
+      voucherId: line.voucher.id.toString(),
+      voucherNo: line.voucher.voucherNo,
+      voucherType: line.voucher.voucherType as VoucherTypeValue,
+      accountCode: line.account.code,
+      referenceNo: line.voucher.referenceNo,
+      narration: line.lineNarration ?? line.voucher.narration,
+      debit: centsToDecimalString(debit),
+      credit: centsToDecimalString(credit),
+      runningBalance: moneyFromCents(Math.abs(run)),
+      runningSide: sideFromSigned(run),
+    });
   }
 
   const openSigned = opening.dr - opening.cr;
@@ -196,9 +261,11 @@ export async function getPartyLedger(
       address: party.address,
     },
     account: {
-      code: account.code,
-      name: account.name,
-      normalBalance: account.normalBalance,
+      code: display.code,
+      name: display.name,
+      normalBalance: display.normalBalance,
+      controlCode: control.code,
+      controlName: control.name,
     },
     opening: {
       debit: centsToDecimalString(opening.dr),
