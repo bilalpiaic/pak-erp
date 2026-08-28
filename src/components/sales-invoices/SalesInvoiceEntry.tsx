@@ -55,7 +55,15 @@ export function SalesInvoiceEntry({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();
+  const [working, setWorking] = useState(false);
   const [reconcile, setReconcile] = useState<SiReconcileResult | null>(null);
+  const orphanIssues = useMemo(
+    () =>
+      (reconcile?.issues ?? []).filter(
+        (issue) => issue.kind === "orphan_voucher" && issue.voucherId,
+      ),
+    [reconcile],
+  );
 
   useEffect(() => {
     if (!openInvoice) return;
@@ -84,6 +92,7 @@ export function SalesInvoiceEntry({
   async function runReconcile(dryRun: boolean) {
     setError(null);
     setMessage(null);
+    setWorking(true);
     try {
       const response = await fetch("/api/sales-invoices/reconcile", {
         method: dryRun ? "GET" : "POST",
@@ -109,6 +118,47 @@ export function SalesInvoiceEntry({
       }
     } catch {
       setError("Unable to reach the server.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function deleteOrphanVouchers(voucherIds?: string[]) {
+    const ids = voucherIds?.filter(Boolean) ?? orphanIssues.map((issue) => issue.voucherId!);
+    if (!ids.length) return;
+    const single = ids.length === 1
+      ? orphanIssues.find((issue) => issue.voucherId === ids[0])
+      : undefined;
+    const confirmed = window.confirm(
+      single
+        ? `Delete SI voucher ${single.voucherNo ?? ids[0]}? It has no linked sales invoice. This cannot be undone.`
+        : `Delete ${ids.length} unreconciled SI voucher(s) with no sales invoice? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+    setError(null);
+    setMessage(null);
+    setWorking(true);
+    try {
+      const response = await fetch("/api/sales-invoices/reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deleteOrphans: true, voucherIds: ids }),
+      });
+      const data = (await response.json()) as SiReconcileResult & { error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "Unable to delete orphan SI vouchers.");
+        return;
+      }
+      setReconcile(data);
+      setMessage(
+        `Deleted ${data.deleted} unreconciled SI voucher${data.deleted === 1 ? "" : "s"}` +
+          (data.issues.length ? `; ${data.issues.length} remaining` : ""),
+      );
+      refresh();
+    } catch {
+      setError("Unable to reach the server.");
+    } finally {
+      setWorking(false);
     }
   }
 
@@ -294,7 +344,7 @@ export function SalesInvoiceEntry({
               <button
                 type="button"
                 className="btn-secondary"
-                disabled={pending}
+                disabled={pending || working}
                 onClick={() => void runReconcile(true)}
               >
                 Check SI vouchers
@@ -302,11 +352,21 @@ export function SalesInvoiceEntry({
               <button
                 type="button"
                 className="btn-secondary"
-                disabled={pending}
+                disabled={pending || working}
                 onClick={() => void runReconcile(false)}
               >
                 Reconcile SI vouchers
               </button>
+              {orphanIssues.length > 0 ? (
+                <button
+                  type="button"
+                  className="bg-[#3b1f1f] px-2.5 py-1 text-[11px] text-[#fca5a5]"
+                  disabled={pending || working}
+                  onClick={() => void deleteOrphanVouchers()}
+                >
+                  Delete orphan SI vouchers
+                </button>
+              ) : null}
             </>
           ) : null}
           <span className="text-xs text-[var(--muted-strong)]">
@@ -326,11 +386,24 @@ export function SalesInvoiceEntry({
         </p>
       ) : null}
       {reconcile && reconcile.issues.length > 0 ? (
-        <div className="no-print max-h-40 overflow-auto border border-[var(--border)] bg-[var(--panel)] p-3 text-xs">
+        <div className="no-print max-h-52 space-y-2 overflow-auto border border-[var(--border)] bg-[var(--panel)] p-3 text-xs">
           {reconcile.issues.map((issue, index) => (
-            <p key={`${issue.kind}-${issue.invoiceId ?? issue.voucherId}-${index}`}>
-              {issue.detail}
-            </p>
+            <div
+              key={`${issue.kind}-${issue.invoiceId ?? issue.voucherId}-${index}`}
+              className="flex items-start justify-between gap-3"
+            >
+              <p>{issue.detail}</p>
+              {isAdmin && issue.kind === "orphan_voucher" && issue.voucherId ? (
+                <button
+                  type="button"
+                  className="shrink-0 bg-[#3b1f1f] px-2 py-0.5 text-[11px] text-[#fca5a5]"
+                  disabled={pending || working}
+                  onClick={() => void deleteOrphanVouchers([issue.voucherId!])}
+                >
+                  Delete
+                </button>
+              ) : null}
+            </div>
           ))}
         </div>
       ) : null}
