@@ -103,7 +103,7 @@ async function nextInvoiceNo(companyId: bigint): Promise<string> {
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
-async function resolvePostingAccounts(companyId: bigint) {
+export async function resolvePostingAccounts(companyId: bigint) {
   const prisma = getPrisma();
   const accounts = await prisma.account.findMany({
     where: {
@@ -153,7 +153,7 @@ function lineNarration(lines: NormalizedInvoiceLine[]): string {
   return `Sales invoice (${lines.length} lines)`;
 }
 
-async function syncVoucherGl(
+export async function syncVoucherGl(
   tx: Prisma.TransactionClient,
   args: {
     companyId: bigint;
