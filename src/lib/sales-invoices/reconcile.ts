@@ -2,6 +2,7 @@ import type { Prisma, SalesInvoice, SalesInvoiceLine, Voucher, VoucherLine } fro
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
 import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
+import { adjustPartyOutstanding } from "@/lib/parties/outstanding";
 
 import { resolvePostingAccounts, syncVoucherGl } from "./service";
 import type { NormalizedInvoiceLine } from "./validation";
@@ -216,6 +217,7 @@ export async function reconcileSalesInvoiceVouchers(
       issues,
       repaired: 0,
       skipped: issues.length,
+      deleted: 0,
     };
   }
 
@@ -313,6 +315,7 @@ export async function reconcileSalesInvoiceVouchers(
     issues: remaining.issues,
     repaired,
     skipped,
+    deleted: 0,
   };
 
   async function auditOnly(): Promise<{ issues: SiReconcileIssue[] }> {
@@ -345,4 +348,136 @@ export async function reconcileSalesInvoiceVouchers(
     }
     return { issues: next };
   }
+}
+
+function parseVoucherIds(ids: string[]): bigint[] {
+  try {
+    return ids.map((id) => BigInt(id));
+  } catch {
+    throw new Error(
+      "One or more vouchers are not orphan SI vouchers (they may be linked to a sales invoice).",
+    );
+  }
+}
+
+function matchesUnlinkedInvoice(
+  voucherNo: string,
+  invoiceByNo: Map<string, { voucherId: bigint | null }>,
+): boolean {
+  const match = invoiceByNo.get(voucherNo.toLowerCase());
+  return Boolean(match && !match.voucherId);
+}
+
+/** Permanently delete SI vouchers that have no sales invoice. Posted orphans reverse party outstanding. */
+export async function deleteOrphanSiVouchers(
+  options: { voucherIds?: string[] } = {},
+  actor = "system",
+): Promise<SiReconcileResult> {
+  const prisma = getPrisma();
+  const companyId = await requireCompanyId();
+  const requested = (options.voucherIds ?? [])
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  const invoices = await prisma.salesInvoice.findMany({
+    where: { companyId },
+    select: { invoiceNo: true, voucherId: true },
+  });
+  const invoiceByNo = new Map(
+    invoices.map((row) => [row.invoiceNo.toLowerCase(), row]),
+  );
+
+  const unlinked = await prisma.voucher.findMany({
+    where: {
+      companyId,
+      voucherType: "SI",
+      salesInvoice: { is: null },
+      ...(requested.length ? { id: { in: parseVoucherIds(requested) } } : {}),
+    },
+    include: {
+      lines: true,
+      attachments: { select: { storageKey: true } },
+      salesInvoice: { select: { id: true } },
+    },
+  });
+
+  if (requested.length) {
+    const found = new Set(unlinked.map((row) => row.id.toString()));
+    const missing = requested.filter((id) => !found.has(id));
+    if (missing.length) {
+      throw new Error(
+        "One or more vouchers are not orphan SI vouchers (they may be linked to a sales invoice).",
+      );
+    }
+    if (unlinked.some((row) => matchesUnlinkedInvoice(row.voucherNo, invoiceByNo))) {
+      throw new Error(
+        "Those SI vouchers match a sales invoice by number. Use Reconcile SI vouchers instead of deleting them.",
+      );
+    }
+  }
+
+  const orphans = unlinked.filter(
+    (row) => !row.salesInvoice && !matchesUnlinkedInvoice(row.voucherNo, invoiceByNo),
+  );
+
+  let deleted = 0;
+  const storageKeys: string[] = [];
+
+  for (const voucher of orphans) {
+    if (voucher.salesInvoice) continue;
+    await prisma.$transaction(async (tx) => {
+      if (voucher.status === "POSTED" && voucher.partyId) {
+        const debitCents = voucher.lines.reduce(
+          (sum, line) => sum + (toCents(line.debit.toString()) ?? 0),
+          0,
+        );
+        if (debitCents) {
+          await adjustPartyOutstanding(tx, {
+            partyId: voucher.partyId,
+            companyId,
+            deltaCents: -debitCents,
+          });
+        }
+      }
+
+      await tx.voucher.delete({ where: { id: voucher.id } });
+      await tx.auditLog.create({
+        data: {
+          companyId,
+          actor,
+          action: "DELETE",
+          entity: "Voucher",
+          recordId: voucher.id.toString(),
+          oldValue: {
+            voucherNo: voucher.voucherNo,
+            voucherType: voucher.voucherType,
+            status: voucher.status,
+            orphan: true,
+          },
+        },
+      });
+    });
+    storageKeys.push(...voucher.attachments.map((row) => row.storageKey));
+    deleted += 1;
+  }
+
+  const { deleteStoredAttachment } = await import("@/lib/attachments/storage");
+  await Promise.all(
+    storageKeys.map(async (key) => {
+      try {
+        await deleteStoredAttachment(key);
+      } catch {
+        // DB row is already gone; leftover files are non-fatal.
+      }
+    }),
+  );
+
+  const remaining = await reconcileSalesInvoiceVouchers({ dryRun: true });
+  return {
+    ...remaining,
+    dryRun: false,
+    repaired: 0,
+    skipped: remaining.issues.length,
+    deleted,
+  };
 }

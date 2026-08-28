@@ -23,4 +23,5 @@ export type SiReconcileResult = {
   issues: SiReconcileIssue[];
   repaired: number;
   skipped: number;
+  deleted: number;
 };

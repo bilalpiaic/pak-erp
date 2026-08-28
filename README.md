@@ -124,6 +124,7 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Print unclips the app shell so registers, ledgers, and invoices continue onto later A4 pages
 - Letterhead and column headers repeat on each page; signatures stay on the last page
 - Sales Invoices: check / repair SI voucher link, status, party, and amount (`/api/sales-invoices/reconcile`)
+- Administrators can delete unreconciled SI vouchers that have no sales invoice (posted orphans reverse party outstanding)
 
 The legacy single-file prototype lives in `legacy/index.html`.
 
