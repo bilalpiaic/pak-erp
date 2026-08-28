@@ -10,6 +10,7 @@ import { centsToDecimalString, toCents } from "@/lib/accounting/money";
 import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { PartyDTO } from "@/lib/parties/types";
+import { printDocument } from "@/lib/print/page";
 import type {
   SalesInvoiceDTO,
   SalesInvoiceInput,
@@ -64,7 +65,7 @@ export function SalesInvoiceForm({
 
   useEffect(() => {
     if (!autoPrint) return;
-    const timer = window.setTimeout(() => window.print(), 350);
+    const timer = window.setTimeout(() => printDocument("portrait"), 350);
     return () => window.clearTimeout(timer);
   }, [autoPrint]);
 
@@ -293,7 +294,7 @@ export function SalesInvoiceForm({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <PrintButton />
+          <PrintButton orientation="portrait" />
           {isAdmin && status === "POSTED" ? (
             <button
               type="button"

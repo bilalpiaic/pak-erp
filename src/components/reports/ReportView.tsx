@@ -11,6 +11,7 @@ import {
   accountLedgerHref,
   partyLedgerHref,
 } from "@/lib/links";
+import { REPORT_PRINT_ORIENTATION, ReportPrint } from "@/components/reports/ReportPrint";
 import type { ReportType } from "@/lib/reports/service";
 
 type ReportViewProps = {
@@ -72,26 +73,31 @@ export function ReportView({ type, title, initial, loadError = null }: ReportVie
         <button type="button" disabled={pending} onClick={load} className="btn-primary">
           {pending ? "Loading…" : "Apply"}
         </button>
-        <PrintButton disabled={!data} />
+        <PrintButton disabled={!data} orientation={REPORT_PRINT_ORIENTATION[type]} />
       </div>
 
       {error ? (
-        <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
+        <p className="no-print border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
 
       {data ? (
-        <div className="border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
-          <div className="mb-4 border-b border-[var(--border)] pb-3">
-            <div className="text-base font-semibold text-[var(--foreground)]">{title}</div>
-            <div className="text-[11px] text-[var(--muted)]">
-              {data.fiscalYearName ? `${String(data.fiscalYearName)} · ` : ""}
-              {String(data.from)} → {String(data.to)}
+        <>
+          <div className="no-print border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-5">
+            <div className="mb-4 border-b border-[var(--border)] pb-3">
+              <div className="text-base font-semibold text-[var(--foreground)]">{title}</div>
+              <div className="text-[11px] text-[var(--muted)]">
+                {data.fiscalYearName ? `${String(data.fiscalYearName)} · ` : ""}
+                {String(data.from)} → {String(data.to)}
+              </div>
             </div>
+            <ReportBody type={type} data={data} />
           </div>
-          <ReportBody type={type} data={data} />
-        </div>
+          <div className="print-only">
+            <ReportPrint type={type} title={title} data={data} />
+          </div>
+        </>
       ) : null}
     </div>
   );

@@ -7,9 +7,11 @@ import { GarmentLoopMark } from "@/components/brand/GarmentLoopMark";
 import { CurrentUserProvider } from "@/components/auth/CurrentUserProvider";
 import { FiscalYearProvider } from "@/components/fiscal-year/FiscalYearProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
-import type { FiscalYearDTO } from "@/lib/company/types";
+import { CompanyPrintProvider } from "@/components/print/CompanyPrintProvider";
+import type { CompanyDTO, FiscalYearDTO } from "@/lib/company/types";
 
 type AppShellProps = {
+  company?: CompanyDTO | null;
   companyName?: string;
   ntn?: string | null;
   strn?: string | null;
@@ -24,6 +26,7 @@ type AppShellProps = {
 };
 
 export function AppShell({
+  company = null,
   companyName = "GarmentLoop ERP",
   ntn,
   strn,
@@ -67,9 +70,10 @@ export function AppShell({
         role={currentUserRole}
         isDemo={isDemo}
       >
-      <div className="flex h-dvh overflow-hidden">
+      <CompanyPrintProvider company={company}>
+      <div className="app-shell flex h-dvh overflow-hidden">
         {/* Desktop / tablet sidebar */}
-        <div className="hidden h-full md:flex">
+        <div className="no-print hidden h-full md:flex">
           <Sidebar
             companyName={companyName}
             ntn={ntn}
@@ -82,7 +86,7 @@ export function AppShell({
 
         {/* Mobile drawer */}
         <div
-          className={`fixed inset-0 z-40 md:hidden ${mobileNavOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+          className={`no-print fixed inset-0 z-40 md:hidden ${mobileNavOpen ? "pointer-events-auto" : "pointer-events-none"}`}
           aria-hidden={!mobileNavOpen}
         >
           <button
@@ -111,7 +115,7 @@ export function AppShell({
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="app-shell-body flex min-w-0 flex-1 flex-col">
           <header className="no-print flex items-center gap-3 border-b border-[var(--border)] bg-[var(--sidebar)] px-3 py-2.5 md:hidden">
             <button
               type="button"
@@ -150,9 +154,10 @@ export function AppShell({
             </div>
           ) : null}
 
-          <main className="min-h-0 flex-1 overflow-auto">{children}</main>
+          <main className="app-shell-main min-h-0 flex-1 overflow-auto">{children}</main>
         </div>
       </div>
+      </CompanyPrintProvider>
       </CurrentUserProvider>
     </FiscalYearProvider>
   );

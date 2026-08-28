@@ -1,8 +1,12 @@
 "use client";
 
+import { PrintAmount } from "@/components/print/PrintAmount";
+import { PrintLetterhead } from "@/components/print/PrintLetterhead";
+import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import { OriginLink } from "@/components/ui/OriginLink";
 import type { CompanyDTO } from "@/lib/company/types";
-import { formatCurrency } from "@/lib/formatting/money";
+import { companyPrintInfoFromDto } from "@/lib/print/company";
 import { partyLedgerHref, voucherHref } from "@/lib/links";
 import type { SalesInvoiceDTO } from "@/lib/sales-invoices/types";
 
@@ -59,6 +63,7 @@ export function printPropsFromInvoice(
 }
 
 export function SalesInvoicePrint({
+  company,
   invoiceNo,
   invoiceDate,
   partyId,
@@ -73,81 +78,81 @@ export function SalesInvoicePrint({
   totalAmount,
 }: SalesInvoicePrintProps) {
   return (
-    <div className="sales-invoice-print border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-6">
-      <div className="mb-4 border-b border-[var(--border)] pb-3">
-        <div className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
-          Sales Invoice
-        </div>
-        {status ? (
-          <div className="mt-1 text-xs text-[var(--muted)]">Status: {status}</div>
-        ) : null}
-      </div>
-
-      <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
-        <div className="space-y-1">
-          <div>
-            <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-              Bill to
-            </span>
-            <div className="font-semibold">
-              {partyId && partyName ? (
-                <OriginLink href={partyLedgerHref(partyId, "debtor")}>{partyName}</OriginLink>
-              ) : (
-                partyName || "—"
-              )}
-            </div>
-            {partyNtn ? (
-              <div className="text-xs text-[var(--muted)]">NTN {partyNtn}</div>
-            ) : null}
-          </div>
-          {narration ? (
-            <div className="text-xs text-[var(--muted)]">
-              <span className="font-semibold text-[var(--foreground)]">Narration: </span>
-              {narration}
-            </div>
-          ) : null}
-        </div>
-        <div className="space-y-1 sm:text-right">
-          <div>
-            <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-              Invoice No.
-            </span>
-            <div className="font-semibold">{invoiceNo}</div>
-          </div>
-          <div className="text-xs">
-            <span className="text-[var(--muted)]">Date: </span>
-            {invoiceDate}
-          </div>
-          {poNumber ? (
-            <div className="text-xs">
-              <span className="text-[var(--muted)]">PO #: </span>
-              {poNumber}
-            </div>
-          ) : null}
-          {voucherNo ? (
-            <div className="text-xs">
-              <span className="text-[var(--muted)]">Voucher: </span>
-              {voucherId ? (
-                <OriginLink href={voucherHref(voucherId)}>{voucherNo}</OriginLink>
-              ) : (
-                voucherNo
-              )}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <table className="data-table w-full min-w-[640px] border-collapse text-left">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Item</th>
-            <th>Detail</th>
-            <th className="text-right">Qty</th>
-            <th className="text-right">Rate</th>
-            <th className="text-right">Amount</th>
-          </tr>
-        </thead>
+    <div className="sales-invoice-print print-sheet print-sheet-portrait border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-6">
+      <table className="print-table data-table w-full border-collapse text-left">
+        <PrintThead
+          colSpan={6}
+          banner={
+            <>
+              <PrintLetterhead
+                company={companyPrintInfoFromDto(company)}
+                title="Sales Invoice"
+                subtitle={status ? `Status: ${status}` : null}
+                extra={`Invoice ${invoiceNo} · ${invoiceDate}${poNumber ? ` · PO ${poNumber}` : ""}`}
+              />
+              <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                      Bill to
+                    </span>
+                    <div className="font-semibold">
+                      {partyId && partyName ? (
+                        <OriginLink href={partyLedgerHref(partyId, "debtor")}>{partyName}</OriginLink>
+                      ) : (
+                        partyName || "—"
+                      )}
+                    </div>
+                    {partyNtn ? (
+                      <div className="text-xs text-[var(--muted)]">NTN {partyNtn}</div>
+                    ) : null}
+                  </div>
+                  {narration ? (
+                    <div className="text-xs text-[var(--muted)]">
+                      <span className="font-semibold text-[var(--foreground)]">Narration: </span>
+                      {narration}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="space-y-1 sm:text-right">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                      Invoice No.
+                    </span>
+                    <div className="font-semibold">{invoiceNo}</div>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-[var(--muted)]">Date: </span>
+                    {invoiceDate}
+                  </div>
+                  {poNumber ? (
+                    <div className="text-xs">
+                      <span className="text-[var(--muted)]">PO #: </span>
+                      {poNumber}
+                    </div>
+                  ) : null}
+                  {voucherNo ? (
+                    <div className="text-xs">
+                      <span className="text-[var(--muted)]">SI voucher: </span>
+                      {voucherId ? (
+                        <OriginLink href={voucherHref(voucherId)}>{voucherNo}</OriginLink>
+                      ) : (
+                        voucherNo
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          }
+        >
+          <th>#</th>
+          <th>Item</th>
+          <th>Detail</th>
+          <th className="num text-right">Qty</th>
+          <th className="num text-right">Rate</th>
+          <th className="num text-right">Amount</th>
+        </PrintThead>
         <tbody>
           {lines.length === 0 ? (
             <tr>
@@ -161,9 +166,13 @@ export function SalesInvoicePrint({
                 <td className="text-xs text-[var(--muted)]">{index + 1}</td>
                 <td className="text-sm font-medium">{line.item}</td>
                 <td className="text-xs text-[var(--muted)]">{line.detail || "—"}</td>
-                <td className="text-right font-mono text-xs">{line.quantity}</td>
-                <td className="text-right font-mono text-xs">{formatCurrency(line.rate)}</td>
-                <td className="text-right font-mono text-xs">{formatCurrency(line.amount)}</td>
+                <td className="num text-right font-mono text-xs">{line.quantity}</td>
+                <td className="num text-right font-mono text-xs">
+                  <PrintAmount value={line.rate} />
+                </td>
+                <td className="num text-right font-mono text-xs">
+                  <PrintAmount value={line.amount} />
+                </td>
               </tr>
             ))
           )}
@@ -173,21 +182,16 @@ export function SalesInvoicePrint({
             <td colSpan={5} className="text-right font-semibold">
               Total
             </td>
-            <td className="text-right font-mono text-sm font-semibold">
-              {formatCurrency(totalAmount)}
+            <td className="num text-right font-mono text-sm font-semibold">
+              <PrintAmount value={totalAmount} />
             </td>
           </tr>
         </tfoot>
       </table>
 
-      <div className="mt-8 grid gap-8 text-xs text-[var(--muted)] sm:grid-cols-2">
-        <div>
-          <div className="mb-8 border-b border-[var(--border)] pb-1">Prepared by</div>
-        </div>
-        <div>
-          <div className="mb-8 border-b border-[var(--border)] pb-1">Received by / Customer</div>
-        </div>
-      </div>
+      <PrintSignatures
+        columns={[{ label: "Prepared by" }, { label: "Received by / Customer" }]}
+      />
     </div>
   );
 }

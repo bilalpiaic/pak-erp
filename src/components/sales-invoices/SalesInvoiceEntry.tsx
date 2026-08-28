@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 
 import { PrintButton } from "@/components/print/PrintButton";
 import { SalesInvoiceForm } from "@/components/sales-invoices/SalesInvoiceForm";
+import { SalesInvoiceRegisterPrint } from "@/components/sales-invoices/SalesInvoiceRegisterPrint";
 import { OriginLink } from "@/components/ui/OriginLink";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { CompanyDTO } from "@/lib/company/types";
-import { partyLedgerHref, salesInvoiceHref } from "@/lib/links";
+import { partyLedgerHref, salesInvoiceHref, voucherHref } from "@/lib/links";
+import type { SiReconcileResult } from "@/lib/sales-invoices/reconcile-types";
 import type { PartyDTO } from "@/lib/parties/types";
 import type { SalesInvoiceDTO } from "@/lib/sales-invoices/types";
 
@@ -53,6 +55,7 @@ export function SalesInvoiceEntry({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(loadError);
   const [pending, startTransition] = useTransition();
+  const [reconcile, setReconcile] = useState<SiReconcileResult | null>(null);
 
   useEffect(() => {
     if (!openInvoice) return;
@@ -77,6 +80,37 @@ export function SalesInvoiceEntry({
       );
     });
   }, [invoices, search, statusFilter]);
+
+  async function runReconcile(dryRun: boolean) {
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/sales-invoices/reconcile", {
+        method: dryRun ? "GET" : "POST",
+      });
+      const data = (await response.json()) as SiReconcileResult & { error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "Reconcile failed.");
+        return;
+      }
+      setReconcile(data);
+      if (dryRun) {
+        setMessage(
+          data.issues.length === 0
+            ? `Sales invoices and SI vouchers match (${data.invoiceCount} invoices, ${data.siVoucherCount} SI vouchers).`
+            : `Found ${data.issues.length} mismatch${data.issues.length === 1 ? "" : "es"} between sales invoices and SI vouchers.`,
+        );
+      } else {
+        setMessage(
+          `Reconciled ${data.repaired} invoice${data.repaired === 1 ? "" : "s"}` +
+            (data.issues.length ? `; ${data.issues.length} remaining` : ""),
+        );
+        refresh();
+      }
+    } catch {
+      setError("Unable to reach the server.");
+    }
+  }
 
   function refresh() {
     startTransition(async () => {
@@ -254,7 +288,27 @@ export function SalesInvoiceEntry({
             <option value="POSTED">POSTED</option>
             <option value="CANCELLED">CANCELLED</option>
           </select>
-          <PrintButton disabled={filtered.length === 0} />
+          <PrintButton disabled={filtered.length === 0} orientation="landscape" />
+          {isAdmin ? (
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={pending}
+                onClick={() => void runReconcile(true)}
+              >
+                Check SI vouchers
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={pending}
+                onClick={() => void runReconcile(false)}
+              >
+                Reconcile SI vouchers
+              </button>
+            </>
+          ) : null}
           <span className="text-xs text-[var(--muted-strong)]">
             {pending ? "Refreshing…" : `${filtered.length} invoices`}
           </span>
@@ -262,17 +316,26 @@ export function SalesInvoiceEntry({
       </div>
 
       {message ? (
-        <p className="text-sm text-[var(--success)]" role="status">
+        <p className="no-print text-sm text-[var(--success)]" role="status">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-[var(--danger)]" role="alert">
+        <p className="no-print text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
+      {reconcile && reconcile.issues.length > 0 ? (
+        <div className="no-print max-h-40 overflow-auto border border-[var(--border)] bg-[var(--panel)] p-3 text-xs">
+          {reconcile.issues.map((issue, index) => (
+            <p key={`${issue.kind}-${issue.invoiceId ?? issue.voucherId}-${index}`}>
+              {issue.detail}
+            </p>
+          ))}
+        </div>
+      ) : null}
 
-      <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
+      <div className="no-print overflow-auto border border-[var(--border)] bg-[var(--panel)]">
         <table className="w-full min-w-[860px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
@@ -282,13 +345,14 @@ export function SalesInvoiceEntry({
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">PO #</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2 text-right">Amount</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Status</th>
+              <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">SI voucher</th>
               <th className="sticky top-0 bg-[var(--table-head)] px-3 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-sm text-[var(--muted)]">
+                <td colSpan={8} className="px-3 py-8 text-center text-sm text-[var(--muted)]">
                   No sales invoices yet. Create one to post Dr Debtors / Cr Sales.
                 </td>
               </tr>
@@ -324,6 +388,15 @@ export function SalesInvoiceEntry({
                       >
                         {invoice.status}
                       </span>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {invoice.voucherId && invoice.voucherNo ? (
+                        <OriginLink href={voucherHref(invoice.voucherId)}>
+                          {invoice.voucherNo}
+                        </OriginLink>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1.5">
@@ -391,6 +464,17 @@ export function SalesInvoiceEntry({
             )}
           </tbody>
         </table>
+      </div>
+      <div className="print-only">
+        <SalesInvoiceRegisterPrint
+          invoices={filtered}
+          filters={[
+            search.trim() ? `Search: ${search.trim()}` : null,
+            statusFilter !== "All" ? `Status: ${statusFilter}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || null}
+        />
       </div>
     </div>
   );

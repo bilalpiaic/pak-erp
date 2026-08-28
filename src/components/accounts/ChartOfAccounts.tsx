@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { AccountFormModal } from "@/components/accounts/AccountFormModal";
+import { ChartOfAccountsPrint } from "@/components/accounts/ChartOfAccountsPrint";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { PrintButton } from "@/components/print/PrintButton";
 import { OriginLink } from "@/components/ui/OriginLink";
@@ -221,7 +222,7 @@ export function ChartOfAccounts({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <PrintButton />
+          <PrintButton orientation="landscape" />
           {isAdmin ? (
             <button
               type="button"
@@ -248,12 +249,20 @@ export function ChartOfAccounts({
         </p>
       ) : null}
 
-      <div className="print-only mb-2 text-center">
-        <div className="text-base font-semibold">Chart of Accounts</div>
-        <div className="text-xs text-[var(--muted)]">{visibleCount} accounts</div>
+      <div className="print-only">
+        <ChartOfAccountsPrint
+          groups={groups}
+          filters={[
+            search.trim() ? `Search: ${search.trim()}` : null,
+            typeFilter !== "All" ? `Type: ${typeFilter}` : null,
+            activeFilter !== "all" ? `Status: ${activeFilter}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || null}
+        />
       </div>
 
-      <div className="overflow-auto border border-[var(--border)] bg-[var(--panel)]">
+      <div className="no-print overflow-auto border border-[var(--border)] bg-[var(--panel)]">
         <table className="data-table w-full min-w-[900px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.06em] text-[var(--accent)]">
@@ -295,7 +304,7 @@ export function ChartOfAccounts({
         </table>
       </div>
 
-      <p className="text-xs text-[var(--muted-strong)]">
+      <p className="no-print text-xs text-[var(--muted-strong)]">
         Accounts are listed code-wise (1→9) under COA groups. Each account links to exactly one
         Balance Sheet or Profit &amp; Loss head (plus optional Cash Flow) so new heads appear on
         statements. Codes are immutable after creation. Administrators can add, edit, deactivate,
