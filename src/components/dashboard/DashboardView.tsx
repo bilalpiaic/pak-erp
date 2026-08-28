@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { PrintButton } from "@/components/print/PrintButton";
 import { OriginLink } from "@/components/ui/OriginLink";
+import { DashboardPrint } from "@/components/dashboard/DashboardPrint";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { DashboardResult } from "@/lib/dashboard/service";
 import { partyLedgerHref, voucherHref } from "@/lib/links";
@@ -24,7 +25,7 @@ const TONE_CLASS: Record<DashboardResult["kpis"][number]["tone"], string> = {
 export function DashboardView({ data, loadError = null }: DashboardViewProps) {
   if (loadError) {
     return (
-      <p className="border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
+        <p className="no-print border border-red-200 bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]">
         {loadError}
       </p>
     );
@@ -38,7 +39,7 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="no-print flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="font-display text-lg font-bold text-[var(--foreground)]">
             {data.companyName}
@@ -48,12 +49,12 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
             {data.fiscalYearName ? ` — ${data.fiscalYearName}` : ""} · As of {data.asOf}
           </div>
         </div>
-        <div className="no-print">
-          <PrintButton />
+        <div>
+          <PrintButton orientation="portrait" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="no-print grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data.kpis.map((kpi) => (
           <div
             key={kpi.label}
@@ -69,7 +70,7 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
         ))}
       </div>
 
-      <div className="border border-[var(--border)] bg-[var(--panel)]">
+      <div className="no-print border border-[var(--border)] bg-[var(--panel)]">
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2">
           <span className="text-sm font-semibold text-[var(--accent)]">
             Recent vouchers
@@ -140,6 +141,9 @@ export function DashboardView({ data, loadError = null }: DashboardViewProps) {
             </tbody>
           </table>
         </div>
+      </div>
+      <div className="print-only">
+        <DashboardPrint data={data} />
       </div>
     </div>
   );

@@ -28,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <AppShell
+      company={company}
       companyName={company?.name ?? "GarmentLoop ERP"}
       ntn={company?.ntn}
       strn={company?.strn}

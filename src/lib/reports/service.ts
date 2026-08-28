@@ -34,6 +34,12 @@ type ReportContext = {
   from: string;
   to: string;
   companyName: string;
+  companyAddress: string | null;
+  companyNtn: string | null;
+  companyStrn: string | null;
+  companyPhone: string | null;
+  companyEmail: string | null;
+  currency: string;
   fiscalYearName: string | null;
   accounts: AccountMeta[];
   balTo: AccountBalanceMap;
@@ -64,6 +70,12 @@ async function buildContext(query: ReportQuery): Promise<ReportContext> {
     from,
     to,
     companyName: company.company.name,
+    companyAddress: company.company.address,
+    companyNtn: company.company.ntn,
+    companyStrn: company.company.strn,
+    companyPhone: company.company.phone,
+    companyEmail: company.company.email,
+    currency: company.company.currency,
     fiscalYearName: activeRange.fiscalYear?.name ?? company.fiscalYear?.name ?? null,
     accounts,
     balTo,
@@ -76,6 +88,12 @@ function reportHeader(ctx: ReportContext, title: string) {
   return {
     title,
     companyName: ctx.companyName,
+    companyAddress: ctx.companyAddress,
+    companyNtn: ctx.companyNtn,
+    companyStrn: ctx.companyStrn,
+    companyPhone: ctx.companyPhone,
+    companyEmail: ctx.companyEmail,
+    currency: ctx.currency,
     fiscalYearName: ctx.fiscalYearName,
     from: ctx.from,
     to: ctx.to,
