@@ -3,6 +3,7 @@
 import { PrintAmount } from "@/components/print/PrintAmount";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import { OriginLink } from "@/components/ui/OriginLink";
 import type { CompanyDTO } from "@/lib/company/types";
 import { companyPrintInfoFromDto } from "@/lib/print/company";
@@ -58,70 +59,72 @@ export function VoucherPrint({
 }: VoucherPrintProps) {
   return (
     <div className="voucher-print print-sheet print-sheet-portrait border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-6">
-      <PrintLetterhead
-        company={companyPrintInfoFromDto(company)}
-        title={VOUCHER_TYPE_LABELS[voucherType] ?? voucherType}
-        subtitle={status ? `Status: ${status}` : null}
-        extra={`Voucher ${voucherNo} · ${voucherDate}${referenceNo ? ` · Ref ${referenceNo}` : ""}`}
-      />
-
-      <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
-        <div className="space-y-1">
-          <div>
-            <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-              Party
-            </span>
-            <div className="font-semibold">
-              {partyId && partyName ? (
-                <OriginLink href={partyLedgerHref(partyId, partyKind)}>{partyName}</OriginLink>
-              ) : (
-                partyName || "—"
-              )}
-            </div>
-            {partyNtn ? (
-              <div className="text-xs text-[var(--muted)]">NTN {partyNtn}</div>
-            ) : null}
-            {whtApplicable ? (
-              <div className="text-xs text-[var(--muted)]">WHT applicable</div>
-            ) : null}
-          </div>
-          {narration ? (
-            <div className="text-xs text-[var(--muted)]">
-              <span className="font-semibold text-[var(--foreground)]">Narration: </span>
-              {narration}
-            </div>
-          ) : null}
-        </div>
-        <div className="space-y-1 sm:text-right">
-          <div>
-            <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-              Voucher No.
-            </span>
-            <div className="font-semibold">{voucherNo}</div>
-          </div>
-          <div className="text-xs">
-            <span className="text-[var(--muted)]">Date: </span>
-            {voucherDate}
-          </div>
-          {referenceNo ? (
-            <div className="text-xs">
-              <span className="text-[var(--muted)]">Reference: </span>
-              {referenceNo}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
       <table className="print-table data-table w-full border-collapse text-left">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Account</th>
-            <th>Narration</th>
-            <th className="num text-right">Debit</th>
-            <th className="num text-right">Credit</th>
-          </tr>
-        </thead>
+        <PrintThead
+          colSpan={5}
+          banner={
+            <>
+              <PrintLetterhead
+                company={companyPrintInfoFromDto(company)}
+                title={VOUCHER_TYPE_LABELS[voucherType] ?? voucherType}
+                subtitle={status ? `Status: ${status}` : null}
+                extra={`Voucher ${voucherNo} · ${voucherDate}${referenceNo ? ` · Ref ${referenceNo}` : ""}`}
+              />
+              <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                      Party
+                    </span>
+                    <div className="font-semibold">
+                      {partyId && partyName ? (
+                        <OriginLink href={partyLedgerHref(partyId, partyKind)}>{partyName}</OriginLink>
+                      ) : (
+                        partyName || "—"
+                      )}
+                    </div>
+                    {partyNtn ? (
+                      <div className="text-xs text-[var(--muted)]">NTN {partyNtn}</div>
+                    ) : null}
+                    {whtApplicable ? (
+                      <div className="text-xs text-[var(--muted)]">WHT applicable</div>
+                    ) : null}
+                  </div>
+                  {narration ? (
+                    <div className="text-xs text-[var(--muted)]">
+                      <span className="font-semibold text-[var(--foreground)]">Narration: </span>
+                      {narration}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="space-y-1 sm:text-right">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                      Voucher No.
+                    </span>
+                    <div className="font-semibold">{voucherNo}</div>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-[var(--muted)]">Date: </span>
+                    {voucherDate}
+                  </div>
+                  {referenceNo ? (
+                    <div className="text-xs">
+                      <span className="text-[var(--muted)]">Reference: </span>
+                      {referenceNo}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          }
+        >
+          <th>#</th>
+          <th>Account</th>
+          <th>Narration</th>
+          <th className="num text-right">Debit</th>
+          <th className="num text-right">Credit</th>
+        </PrintThead>
         <tbody>
           {lines.length === 0 ? (
             <tr>

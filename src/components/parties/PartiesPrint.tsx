@@ -2,6 +2,7 @@ import { PrintAmount } from "@/components/print/PrintAmount";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSheet } from "@/components/print/PrintSheet";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import type { PartyDTO } from "@/lib/parties/types";
 
 type PartiesPrintProps = {
@@ -12,24 +13,26 @@ type PartiesPrintProps = {
 export function PartiesPrint({ parties, filters }: PartiesPrintProps) {
   return (
     <PrintSheet orientation="landscape">
-      <PrintLetterhead
-        title="Parties"
-        subtitle={filters || `${parties.length} parties`}
-        extra={filters ? `${parties.length} parties` : null}
-      />
       <table className="print-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>NTN</th>
-            <th>Type</th>
-            <th>Phone</th>
-            <th className="num">Outstanding</th>
-            <th className="num">Age</th>
-            <th>WHT</th>
-            <th>Status</th>
-          </tr>
-        </thead>
+        <PrintThead
+          colSpan={8}
+          banner={
+            <PrintLetterhead
+              title="Parties"
+              subtitle={filters || `${parties.length} parties`}
+              extra={filters ? `${parties.length} parties` : null}
+            />
+          }
+        >
+          <th>Name</th>
+          <th>NTN</th>
+          <th>Type</th>
+          <th>Phone</th>
+          <th className="num">Outstanding</th>
+          <th className="num">Age</th>
+          <th>WHT</th>
+          <th>Status</th>
+        </PrintThead>
         <tbody>
           {parties.length === 0 ? (
             <tr>

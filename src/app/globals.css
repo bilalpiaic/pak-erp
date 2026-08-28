@@ -170,7 +170,12 @@ a {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 8mm 12mm;
+    margin: 12mm 8mm 14mm;
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-size: 8pt;
+      color: #555;
+    }
   }
 
   html,
@@ -178,6 +183,7 @@ a {
     background: #fff !important;
     color: #000 !important;
     height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
   }
 
@@ -192,17 +198,27 @@ a {
     display: block !important;
   }
 
+  /* Unclip the app shell so long registers/ledgers flow onto page 2+. */
   .app-shell,
+  .app-shell-body,
   .app-shell-main,
   .page-shell {
     display: block !important;
+    position: static !important;
     height: auto !important;
     max-height: none !important;
+    min-height: 0 !important;
     overflow: visible !important;
     max-width: none !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
+    flex: none !important;
+    transform: none !important;
+  }
+
+  .sticky {
+    position: static !important;
   }
 
   .data-table th {
@@ -351,7 +367,19 @@ a {
 }
 
 .print-table tr {
-  page-break-inside: avoid;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+.print-table thead tr.print-banner th {
+  background: #fff;
+  border: none;
+  padding: 0 0 8px;
+  font-weight: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: inherit;
+  color: inherit;
 }
 
 .print-amount {

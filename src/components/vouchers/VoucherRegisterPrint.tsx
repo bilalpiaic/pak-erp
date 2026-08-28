@@ -2,6 +2,7 @@ import { PrintAmount } from "@/components/print/PrintAmount";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSheet } from "@/components/print/PrintSheet";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import type { VoucherDTO } from "@/lib/vouchers/types";
 
 type VoucherRegisterPrintProps = {
@@ -12,23 +13,25 @@ type VoucherRegisterPrintProps = {
 export function VoucherRegisterPrint({ vouchers, filters }: VoucherRegisterPrintProps) {
   return (
     <PrintSheet orientation="landscape">
-      <PrintLetterhead
-        title="Voucher Register"
-        subtitle={filters || `${vouchers.length} vouchers`}
-        extra={filters ? `${vouchers.length} vouchers` : null}
-      />
       <table className="print-table">
-        <thead>
-          <tr>
-            <th>Voucher No.</th>
-            <th>Date</th>
-            <th>Type</th>
-            <th>Party</th>
-            <th>Reference</th>
-            <th className="num">Amount</th>
-            <th>Status</th>
-          </tr>
-        </thead>
+        <PrintThead
+          colSpan={7}
+          banner={
+            <PrintLetterhead
+              title="Voucher Register"
+              subtitle={filters || `${vouchers.length} vouchers`}
+              extra={filters ? `${vouchers.length} vouchers` : null}
+            />
+          }
+        >
+          <th>Voucher No.</th>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Party</th>
+          <th>Reference</th>
+          <th className="num">Amount</th>
+          <th>Status</th>
+        </PrintThead>
         <tbody>
           {vouchers.length === 0 ? (
             <tr>

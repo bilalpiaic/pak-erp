@@ -2,6 +2,7 @@ import { PrintAmount } from "@/components/print/PrintAmount";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSheet } from "@/components/print/PrintSheet";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import { companyPrintInfoFromDto, periodCaption } from "@/lib/print/company";
 import type { PartyLedgerResult } from "@/lib/party-ledger/service";
 
@@ -21,26 +22,28 @@ export function PartyLedgerPrint({ data }: PartyLedgerPrintProps) {
 
   return (
     <PrintSheet orientation="landscape">
-      <PrintLetterhead
-        company={companyPrintInfoFromDto(data.company)}
-        title={data.kind === "debtor" ? "Debtor Ledger" : "Creditor Ledger"}
-        subtitle={data.party.name}
-        extra={`${partyMeta}${partyMeta ? " · " : ""}Control ${data.account.code} — ${data.account.name}`}
-        period={periodCaption(data.from, data.to)}
-      />
       <table className="print-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Voucher</th>
-            <th>Type</th>
-            <th>Reference</th>
-            <th>Narration</th>
-            <th className="num">Debit</th>
-            <th className="num">Credit</th>
-            <th className="num">Balance</th>
-          </tr>
-        </thead>
+        <PrintThead
+          colSpan={8}
+          banner={
+            <PrintLetterhead
+              company={companyPrintInfoFromDto(data.company)}
+              title={data.kind === "debtor" ? "Debtor Ledger" : "Creditor Ledger"}
+              subtitle={data.party.name}
+              extra={`${partyMeta}${partyMeta ? " · " : ""}Control ${data.account.code} — ${data.account.name}`}
+              period={periodCaption(data.from, data.to)}
+            />
+          }
+        >
+          <th>Date</th>
+          <th>Voucher</th>
+          <th>Type</th>
+          <th>Reference</th>
+          <th>Narration</th>
+          <th className="num">Debit</th>
+          <th className="num">Credit</th>
+          <th className="num">Balance</th>
+        </PrintThead>
         <tbody>
           <tr>
             <td colSpan={5} className="bold">

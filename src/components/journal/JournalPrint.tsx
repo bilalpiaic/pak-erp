@@ -2,6 +2,7 @@ import { PrintAmount } from "@/components/print/PrintAmount";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSheet } from "@/components/print/PrintSheet";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import type { JournalResult } from "@/lib/journal/service";
 import { periodCaption } from "@/lib/print/company";
 
@@ -21,25 +22,27 @@ export function JournalPrint({ data, voucherType, search }: JournalPrintProps) {
 
   return (
     <PrintSheet orientation="landscape">
-      <PrintLetterhead
-        title="General Journal"
-        subtitle={extras || null}
-        period={periodCaption(data.from, data.to)}
-      />
       <table className="print-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Voucher</th>
-            <th>Type</th>
-            <th>Acc</th>
-            <th>Account</th>
-            <th>Party</th>
-            <th className="num">Debit</th>
-            <th className="num">Credit</th>
-            <th>Narration</th>
-          </tr>
-        </thead>
+        <PrintThead
+          colSpan={9}
+          banner={
+            <PrintLetterhead
+              title="General Journal"
+              subtitle={extras || null}
+              period={periodCaption(data.from, data.to)}
+            />
+          }
+        >
+          <th>Date</th>
+          <th>Voucher</th>
+          <th>Type</th>
+          <th>Acc</th>
+          <th>Account</th>
+          <th>Party</th>
+          <th className="num">Debit</th>
+          <th className="num">Credit</th>
+          <th>Narration</th>
+        </PrintThead>
         <tbody>
           {data.lines.length === 0 ? (
             <tr>

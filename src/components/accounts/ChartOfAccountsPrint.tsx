@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSheet } from "@/components/print/PrintSheet";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import {
   CF_LINK_LABELS,
   statementHeadLabel,
@@ -25,23 +26,25 @@ export function ChartOfAccountsPrint({ groups, filters }: ChartOfAccountsPrintPr
 
   return (
     <PrintSheet orientation="landscape">
-      <PrintLetterhead
-        title="Chart of Accounts"
-        subtitle={filters || `${count} accounts`}
-        extra={filters ? `${count} accounts` : null}
-      />
       <table className="print-table">
-        <thead>
-          <tr>
-            <th>Code</th>
-            <th>Account name</th>
-            <th>Group</th>
-            <th>Type</th>
-            <th>Statement head</th>
-            <th>CF link</th>
-            <th>Status</th>
-          </tr>
-        </thead>
+        <PrintThead
+          colSpan={7}
+          banner={
+            <PrintLetterhead
+              title="Chart of Accounts"
+              subtitle={filters || `${count} accounts`}
+              extra={filters ? `${count} accounts` : null}
+            />
+          }
+        >
+          <th>Code</th>
+          <th>Account name</th>
+          <th>Group</th>
+          <th>Type</th>
+          <th>Statement head</th>
+          <th>CF link</th>
+          <th>Status</th>
+        </PrintThead>
         <tbody>
           {groups.length === 0 ? (
             <tr>

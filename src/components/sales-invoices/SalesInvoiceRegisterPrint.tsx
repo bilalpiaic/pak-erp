@@ -2,6 +2,7 @@ import { PrintAmount } from "@/components/print/PrintAmount";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSheet } from "@/components/print/PrintSheet";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import type { SalesInvoiceDTO } from "@/lib/sales-invoices/types";
 
 type SalesInvoiceRegisterPrintProps = {
@@ -15,24 +16,26 @@ export function SalesInvoiceRegisterPrint({
 }: SalesInvoiceRegisterPrintProps) {
   return (
     <PrintSheet orientation="landscape">
-      <PrintLetterhead
-        title="Sales Invoice Register"
-        subtitle={filters || `${invoices.length} invoices`}
-        extra={filters ? `${invoices.length} invoices` : null}
-      />
       <table className="print-table">
-        <thead>
-          <tr>
-            <th>Invoice No.</th>
-            <th>Date</th>
-            <th>Party</th>
-            <th>NTN</th>
-            <th>PO #</th>
-            <th className="num">Amount</th>
-            <th>Status</th>
-            <th>Voucher</th>
-          </tr>
-        </thead>
+        <PrintThead
+          colSpan={8}
+          banner={
+            <PrintLetterhead
+              title="Sales Invoice Register"
+              subtitle={filters || `${invoices.length} invoices`}
+              extra={filters ? `${invoices.length} invoices` : null}
+            />
+          }
+        >
+          <th>Invoice No.</th>
+          <th>Date</th>
+          <th>Party</th>
+          <th>NTN</th>
+          <th>PO #</th>
+          <th className="num">Amount</th>
+          <th>Status</th>
+          <th>SI voucher</th>
+        </PrintThead>
         <tbody>
           {invoices.length === 0 ? (
             <tr>

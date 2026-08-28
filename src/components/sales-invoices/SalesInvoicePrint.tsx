@@ -3,6 +3,7 @@
 import { PrintAmount } from "@/components/print/PrintAmount";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import { OriginLink } from "@/components/ui/OriginLink";
 import type { CompanyDTO } from "@/lib/company/types";
 import { companyPrintInfoFromDto } from "@/lib/print/company";
@@ -78,78 +79,80 @@ export function SalesInvoicePrint({
 }: SalesInvoicePrintProps) {
   return (
     <div className="sales-invoice-print print-sheet print-sheet-portrait border border-[var(--border)] bg-[var(--panel)] p-4 sm:p-6">
-      <PrintLetterhead
-        company={companyPrintInfoFromDto(company)}
-        title="Sales Invoice"
-        subtitle={status ? `Status: ${status}` : null}
-        extra={`Invoice ${invoiceNo} · ${invoiceDate}${poNumber ? ` · PO ${poNumber}` : ""}`}
-      />
-
-      <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
-        <div className="space-y-1">
-          <div>
-            <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-              Bill to
-            </span>
-            <div className="font-semibold">
-              {partyId && partyName ? (
-                <OriginLink href={partyLedgerHref(partyId, "debtor")}>{partyName}</OriginLink>
-              ) : (
-                partyName || "—"
-              )}
-            </div>
-            {partyNtn ? (
-              <div className="text-xs text-[var(--muted)]">NTN {partyNtn}</div>
-            ) : null}
-          </div>
-          {narration ? (
-            <div className="text-xs text-[var(--muted)]">
-              <span className="font-semibold text-[var(--foreground)]">Narration: </span>
-              {narration}
-            </div>
-          ) : null}
-        </div>
-        <div className="space-y-1 sm:text-right">
-          <div>
-            <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
-              Invoice No.
-            </span>
-            <div className="font-semibold">{invoiceNo}</div>
-          </div>
-          <div className="text-xs">
-            <span className="text-[var(--muted)]">Date: </span>
-            {invoiceDate}
-          </div>
-          {poNumber ? (
-            <div className="text-xs">
-              <span className="text-[var(--muted)]">PO #: </span>
-              {poNumber}
-            </div>
-          ) : null}
-          {voucherNo ? (
-            <div className="text-xs">
-              <span className="text-[var(--muted)]">Voucher: </span>
-              {voucherId ? (
-                <OriginLink href={voucherHref(voucherId)}>{voucherNo}</OriginLink>
-              ) : (
-                voucherNo
-              )}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
       <table className="print-table data-table w-full border-collapse text-left">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Item</th>
-            <th>Detail</th>
-            <th className="num text-right">Qty</th>
-            <th className="num text-right">Rate</th>
-            <th className="num text-right">Amount</th>
-          </tr>
-        </thead>
+        <PrintThead
+          colSpan={6}
+          banner={
+            <>
+              <PrintLetterhead
+                company={companyPrintInfoFromDto(company)}
+                title="Sales Invoice"
+                subtitle={status ? `Status: ${status}` : null}
+                extra={`Invoice ${invoiceNo} · ${invoiceDate}${poNumber ? ` · PO ${poNumber}` : ""}`}
+              />
+              <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div className="space-y-1">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                      Bill to
+                    </span>
+                    <div className="font-semibold">
+                      {partyId && partyName ? (
+                        <OriginLink href={partyLedgerHref(partyId, "debtor")}>{partyName}</OriginLink>
+                      ) : (
+                        partyName || "—"
+                      )}
+                    </div>
+                    {partyNtn ? (
+                      <div className="text-xs text-[var(--muted)]">NTN {partyNtn}</div>
+                    ) : null}
+                  </div>
+                  {narration ? (
+                    <div className="text-xs text-[var(--muted)]">
+                      <span className="font-semibold text-[var(--foreground)]">Narration: </span>
+                      {narration}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="space-y-1 sm:text-right">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                      Invoice No.
+                    </span>
+                    <div className="font-semibold">{invoiceNo}</div>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-[var(--muted)]">Date: </span>
+                    {invoiceDate}
+                  </div>
+                  {poNumber ? (
+                    <div className="text-xs">
+                      <span className="text-[var(--muted)]">PO #: </span>
+                      {poNumber}
+                    </div>
+                  ) : null}
+                  {voucherNo ? (
+                    <div className="text-xs">
+                      <span className="text-[var(--muted)]">SI voucher: </span>
+                      {voucherId ? (
+                        <OriginLink href={voucherHref(voucherId)}>{voucherNo}</OriginLink>
+                      ) : (
+                        voucherNo
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          }
+        >
+          <th>#</th>
+          <th>Item</th>
+          <th>Detail</th>
+          <th className="num text-right">Qty</th>
+          <th className="num text-right">Rate</th>
+          <th className="num text-right">Amount</th>
+        </PrintThead>
         <tbody>
           {lines.length === 0 ? (
             <tr>

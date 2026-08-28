@@ -4,6 +4,7 @@ import { PrintAmount } from "@/components/print/PrintAmount";
 import { PrintLetterhead } from "@/components/print/PrintLetterhead";
 import { PrintSheet } from "@/components/print/PrintSheet";
 import { PrintSignatures } from "@/components/print/PrintSignatures";
+import { PrintThead } from "@/components/print/PrintThead";
 import { asAtCaption, periodCaption, type CompanyPrintInfo } from "@/lib/print/company";
 import type { PrintOrientation } from "@/lib/print/page";
 import type { ReportType } from "@/lib/reports/service";
@@ -96,18 +97,16 @@ function TrialBalancePrint({ data }: { data: Record<string, unknown> }) {
   return (
     <>
       <table className="print-table">
-        <thead>
-          <tr>
-            <th style={{ width: "14%" }}>Code</th>
-            <th>Account</th>
-            <th className="num" style={{ width: "18%" }}>
-              Debit
-            </th>
-            <th className="num" style={{ width: "18%" }}>
-              Credit
-            </th>
-          </tr>
-        </thead>
+        <PrintThead colSpan={4}>
+          <th style={{ width: "14%" }}>Code</th>
+          <th>Account</th>
+          <th className="num" style={{ width: "18%" }}>
+            Debit
+          </th>
+          <th className="num" style={{ width: "18%" }}>
+            Credit
+          </th>
+        </PrintThead>
         <tbody>
           {sections.map((section) => (
             <Fragment key={section.group}>
@@ -328,20 +327,18 @@ function AgingPrint({
         </p>
       ) : null}
       <table className="print-table">
-        <thead>
-          <tr>
-            <th>Party</th>
-            <th>NTN</th>
-            <th className="num">Total</th>
-            <th className="num">0–30</th>
-            <th className="num">31–60</th>
-            <th className="num">61–90</th>
-            <th className="num">91–120</th>
-            <th className="num">&gt;120</th>
-            {showWht ? <th>WHT</th> : null}
-            <th className="num">Age</th>
-          </tr>
-        </thead>
+        <PrintThead colSpan={colSpan}>
+          <th>Party</th>
+          <th>NTN</th>
+          <th className="num">Total</th>
+          <th className="num">0–30</th>
+          <th className="num">31–60</th>
+          <th className="num">61–90</th>
+          <th className="num">91–120</th>
+          <th className="num">&gt;120</th>
+          {showWht ? <th>WHT</th> : null}
+          <th className="num">Age</th>
+        </PrintThead>
         <tbody>
           {parties.length === 0 ? (
             <tr>
