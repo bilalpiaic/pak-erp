@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
-import type { ItemDTO } from "@/lib/items/types";
+import { ITEM_CATEGORY_LABELS, type ItemDTO } from "@/lib/items/types";
 
 type ItemLovProps = {
   items: ItemDTO[];
@@ -40,6 +40,7 @@ export function ItemLov({
           (item) =>
             item.sku.toLowerCase().includes(q) ||
             item.name.toLowerCase().includes(q) ||
+            ITEM_CATEGORY_LABELS[item.category].toLowerCase().includes(q) ||
             item.category.toLowerCase().includes(q),
         )
       : items;
@@ -171,7 +172,7 @@ export function ItemLov({
                         </span>
                         {item.id ? (
                           <span className="shrink-0 text-[10px] text-[var(--muted)]">
-                            {item.unit} · {item.category}
+                            {item.unit} · {ITEM_CATEGORY_LABELS[item.category]}
                           </span>
                         ) : null}
                       </button>

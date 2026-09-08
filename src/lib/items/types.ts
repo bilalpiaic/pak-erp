@@ -1,11 +1,14 @@
-export const ITEM_CATEGORIES = ["Fabric", "Trim", "FinishedGoods", "Other"] as const;
+export const ITEM_CATEGORIES = ["Saleable", "Consumable"] as const;
 export type ItemCategoryValue = (typeof ITEM_CATEGORIES)[number];
 
 export const ITEM_CATEGORY_LABELS: Record<ItemCategoryValue, string> = {
-  Fabric: "Fabric",
-  Trim: "Trim",
-  FinishedGoods: "Finished goods",
-  Other: "Other",
+  Saleable: "Saleable",
+  Consumable: "Consumable",
+};
+
+export const ITEM_CATEGORY_HINTS: Record<ItemCategoryValue, string> = {
+  Saleable: "From production (BOMs) — sold on sales invoices",
+  Consumable: "Purchased and used in production",
 };
 
 export const ITEM_UNITS = ["Pcs", "Mtr", "Yds", "Kg", "Lot"] as const;

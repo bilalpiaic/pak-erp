@@ -141,6 +141,7 @@ async function resolveLineItems(
     const item = await requireItem(tx, companyId, BigInt(line.itemId), {
       requireActive,
       requireTrackStock: true,
+      requireCategory: "Consumable",
     });
     map.set(line.itemId, { id: item.id, name: item.name, sku: item.sku });
   }

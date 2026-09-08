@@ -40,7 +40,7 @@ export default async function PurchaseInvoicesPage({ searchParams }: { searchPar
   return (
     <PageShell
       title="Purchase Invoices"
-      description="Posting writes Dr Stock in Trade / Cr Trade Creditors and injects quantity IN at line cost (weighted average)."
+      description="Goods inward of consumable items. Posting writes Dr Stock in Trade / Cr Trade Creditors and quantity IN at line cost. Drafts do not move stock."
     >
       <PurchaseInvoiceEntry
         initialInvoices={invoices}

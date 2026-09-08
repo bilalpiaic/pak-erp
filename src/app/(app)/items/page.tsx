@@ -22,7 +22,7 @@ export default async function ItemsPage({ searchParams }: { searchParams: Search
   return (
     <PageShell
       title="Items"
-      description="Stock item master. Quantity and value come from posted purchase invoices, sales invoices, and stock adjustments."
+      description="Saleable items come from production (BOMs) and are sold. Consumable items are purchased and used in production. Quantity and value come from posted documents."
     >
       <ItemsView initialItems={items} openItemId={params.id?.trim() || null} loadError={loadError} />
     </PageShell>

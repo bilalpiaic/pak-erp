@@ -46,7 +46,7 @@ export default async function SalesInvoicesPage({
   return (
     <PageShell
       title="Sales Invoices"
-      description="Create sales invoices with party, PO#, and item lines. Posting writes Dr Trade Debtors / Cr Sales. Stock-tracked items also post Dr COGS / Cr Stock at weighted average cost. Administrators can unpost a posted invoice to edit or delete it."
+      description="Tax invoice for a customer. Posting writes revenue, GST, and AR. Linking a saleable stock item also posts COGS at weighted average cost. Drafts do not post. Administrators can unpost a posted invoice to edit or delete it."
     >
       <SalesInvoiceEntry
         initialInvoices={invoices}

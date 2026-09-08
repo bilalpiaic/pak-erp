@@ -9,6 +9,7 @@ import { PrintButton } from "@/components/print/PrintButton";
 import { OriginLink } from "@/components/ui/OriginLink";
 import {
   ITEM_CATEGORIES,
+  ITEM_CATEGORY_HINTS,
   ITEM_CATEGORY_LABELS,
   ITEM_UNITS,
   type ItemDTO,
@@ -25,7 +26,7 @@ type ItemsViewProps = {
 const EMPTY: ItemInput = {
   sku: "",
   name: "",
-  category: "FinishedGoods",
+  category: "Saleable",
   unit: "Pcs",
   trackStock: true,
   isActive: true,
@@ -225,6 +226,9 @@ export function ItemsView({ initialItems, openItemId = null, loadError = null }:
                   </option>
                 ))}
               </select>
+              <span className="mt-1 block text-[10px] text-[var(--muted)]">
+                {ITEM_CATEGORY_HINTS[form.category]}
+              </span>
             </label>
             <label className="block text-xs">
               <span className="mb-1 block text-[var(--muted-strong)]">Unit</span>

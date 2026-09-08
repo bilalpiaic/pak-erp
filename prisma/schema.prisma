@@ -55,10 +55,10 @@ enum UserRole {
 }
 
 enum ItemCategory {
-  Fabric
-  Trim
-  FinishedGoods
-  Other
+  /// Finished output from production (BOMs) — sold on sales invoices.
+  Saleable
+  /// Purchased inputs used in production — bought on purchase invoices.
+  Consumable
 }
 
 enum StockMoveType {

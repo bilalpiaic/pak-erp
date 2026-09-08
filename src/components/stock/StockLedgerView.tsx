@@ -11,7 +11,7 @@ import { PrintThead } from "@/components/print/PrintThead";
 import { OriginLink } from "@/components/ui/OriginLink";
 import { useFiscalYear } from "@/components/fiscal-year/FiscalYearProvider";
 import { formatCurrency } from "@/lib/formatting/money";
-import type { ItemDTO } from "@/lib/items/types";
+import { ITEM_CATEGORY_LABELS, type ItemCategoryValue, type ItemDTO } from "@/lib/items/types";
 import { purchaseInvoiceHref, salesInvoiceHref, stockAdjustmentHref, voucherHref } from "@/lib/links";
 import { periodCaption } from "@/lib/print/company";
 import type { StockLedgerResult } from "@/lib/stock/service";
@@ -124,7 +124,7 @@ export function StockLedgerView({ initial, items, loadError = null }: Props) {
                   <PrintLetterhead
                     title="Stock Ledger"
                     subtitle={`${data.item.sku} — ${data.item.name}`}
-                    extra={`${data.item.unit} · ${data.item.category}`}
+                    extra={`${data.item.unit} · ${ITEM_CATEGORY_LABELS[data.item.category as ItemCategoryValue] ?? data.item.category}`}
                     period={periodCaption(data.from, data.to)}
                   />
                 }

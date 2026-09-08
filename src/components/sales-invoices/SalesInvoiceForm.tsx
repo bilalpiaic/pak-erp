@@ -436,7 +436,11 @@ export function SalesInvoiceForm({
                     <td className="px-2 py-1.5">
                       <div className="space-y-1">
                         <ItemLov
-                          items={items.filter((item) => item.isActive || item.id === line.itemId)}
+                          items={items.filter(
+                            (item) =>
+                              item.id === line.itemId ||
+                              (item.isActive && item.category === "Saleable"),
+                          )}
                           value={line.itemId}
                           disabled={readOnly}
                           allowNone

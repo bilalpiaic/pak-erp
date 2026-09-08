@@ -128,11 +128,11 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 
 ### Phase 17 — Perpetual inventory (quantity + value)
 
-- Item master (`/items`) with SKU, category, unit, and stock tracking
+- Item master (`/items`) classified as **Saleable** (from production / BOMs) or **Consumable** (purchased inputs), with SKU, unit, and stock tracking
 - Dual-effect posting in one transaction: quantity movements plus GL
 - Weighted average cost (WAC); integer 4-dp quantity units; money stays integer cents
-- Purchase invoices post `Dr 1020 Stock / Cr 2001 Creditors` and quantity IN at line cost
-- Sales invoices with a stock item post extra `Dr 5004 COGS / Cr 1020` and quantity OUT at WAC
+- Purchase invoices post `Dr 1020 Stock / Cr 2001 Creditors` and quantity IN at line cost (consumable items)
+- Sales invoices with a saleable stock item post extra `Dr 5004 COGS / Cr 1020` and quantity OUT at WAC
 - Stock journals (opening / gain / loss / count) post through 1020; manual JVs to 1020 are blocked
 - Negative stock and backdated posts (when a later movement exists) are rejected
 - Draft = no GL and no stock; unpost deletes movements; cancel keeps rows but live qty is posted-only

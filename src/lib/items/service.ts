@@ -6,6 +6,7 @@ import { serialize } from "@/lib/db/serialize";
 
 import {
   ITEM_CATEGORIES,
+  ITEM_CATEGORY_LABELS,
   ITEM_UNITS,
   type ItemCategoryValue,
   type ItemDTO,
@@ -257,7 +258,11 @@ export async function requireItem(
   tx: Prisma.TransactionClient,
   companyId: bigint,
   itemId: bigint,
-  options: { requireActive?: boolean; requireTrackStock?: boolean } = {},
+  options: {
+    requireActive?: boolean;
+    requireTrackStock?: boolean;
+    requireCategory?: ItemCategoryValue;
+  } = {},
 ): Promise<Item> {
   const item = await tx.item.findFirst({ where: { id: itemId, companyId } });
   if (!item) throw new Error("Item not found.");
@@ -266,6 +271,16 @@ export async function requireItem(
   }
   if (options.requireTrackStock && !item.trackStock) {
     throw new Error(`Item ${item.sku} is not stock-tracked.`);
+  }
+  if (options.requireCategory && item.category !== options.requireCategory) {
+    if (options.requireCategory === "Saleable") {
+      throw new Error(
+        `Item ${item.sku} is ${ITEM_CATEGORY_LABELS[item.category as ItemCategoryValue]}. Sales invoices use saleable items (from production / BOMs).`,
+      );
+    }
+    throw new Error(
+      `Item ${item.sku} is ${ITEM_CATEGORY_LABELS[item.category as ItemCategoryValue]}. Purchase invoices use consumable items.`,
+    );
   }
   return item;
 }

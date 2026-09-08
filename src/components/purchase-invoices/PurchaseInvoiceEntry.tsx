@@ -74,7 +74,19 @@ export function PurchaseInvoiceEntry({
     () => parties.filter((p) => p.isActive && p.partyType !== "Debtor").sort((a, b) => a.name.localeCompare(b.name)),
     [parties],
   );
-  const stockItems = useMemo(() => items.filter((item) => item.isActive && item.trackStock), [items]);
+  const selectedItemIds = useMemo(
+    () => new Set(lines.map((line) => line.itemId).filter(Boolean)),
+    [lines],
+  );
+  const stockItems = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          (item.isActive && item.trackStock && item.category === "Consumable") ||
+          selectedItemIds.has(item.id),
+      ),
+    [items, selectedItemIds],
+  );
 
   useEffect(() => {
     if (!openInvoice) return;

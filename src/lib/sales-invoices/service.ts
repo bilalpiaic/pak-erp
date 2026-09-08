@@ -194,7 +194,10 @@ async function hydrateItemNames(
       result.push(line);
       continue;
     }
-    const item = await requireItem(tx, companyId, BigInt(line.itemId), { requireActive });
+    const item = await requireItem(tx, companyId, BigInt(line.itemId), {
+      requireActive,
+      requireCategory: "Saleable",
+    });
     result.push({ ...line, item: item.name || line.item });
   }
   return result;
@@ -216,6 +219,7 @@ async function applySalesStockOut(
     if (!line.itemId) continue;
     const item = await requireItem(tx, args.companyId, BigInt(line.itemId), {
       requireActive: true,
+      requireCategory: "Saleable",
     });
     if (!item.trackStock) continue;
     drafts.push({
