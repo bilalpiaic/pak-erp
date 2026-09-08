@@ -248,8 +248,8 @@ export async function getStockLedger(query: {
     (query.itemId ? items.find((row) => row.id.toString() === query.itemId) : null) ?? items[0]!;
 
   const activeRange = await getActiveDateRange();
-  const fromStr = query.from ?? activeRange.from;
-  const toStr = query.to ?? activeRange.to;
+  const fromStr = query.from?.trim() || activeRange.from;
+  const toStr = query.to?.trim() || activeRange.to;
   const from = parseIsoDate(fromStr);
   const to = parseIsoDate(toStr);
   if (!from || !to) throw new Error("Invalid date range. Use YYYY-MM-DD.");
@@ -366,7 +366,7 @@ export async function getStockValuation(asOf?: string): Promise<StockValuationRe
   const companyId = BigInt(company.id);
 
   const activeRange = await getActiveDateRange();
-  const asOfStr = asOf ?? activeRange.to;
+  const asOfStr = asOf?.trim() || activeRange.to;
   const asOfDate = parseIsoDate(asOfStr);
   if (!asOfDate) throw new Error("Invalid as-of date. Use YYYY-MM-DD.");
 

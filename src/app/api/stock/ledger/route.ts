@@ -9,8 +9,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const data = await getStockLedger({
       itemId: searchParams.get("itemId") ?? undefined,
-      from: searchParams.get("from") ?? undefined,
-      to: searchParams.get("to") ?? undefined,
+      from: searchParams.get("from")?.trim() || undefined,
+      to: searchParams.get("to")?.trim() || undefined,
     });
     return NextResponse.json(data);
   } catch (error) {
