@@ -2,6 +2,7 @@ export const SALES_INVOICE_STATUSES = ["DRAFT", "POSTED", "CANCELLED"] as const;
 export type SalesInvoiceStatusValue = (typeof SALES_INVOICE_STATUSES)[number];
 
 export type SalesInvoiceLineInput = {
+  itemId?: string | null;
   item: string;
   detail?: string | null;
   quantity: string | number;
@@ -20,7 +21,9 @@ export type SalesInvoiceInput = {
 export type SalesInvoiceLineDTO = {
   id: string;
   lineNo: number;
+  itemId: string | null;
   item: string;
+  sku?: string | null;
   detail: string | null;
   quantity: string;
   rate: string;

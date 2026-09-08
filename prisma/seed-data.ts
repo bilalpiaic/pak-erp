@@ -62,6 +62,7 @@ export const SEED_ACCOUNTS: SeedAccount[] = [
   { code: "5001", name: "Opening Stock", accountGroup: "COGS", accountType: "Expense", bsSection: "None", plSection: "OpeningStock", cfLink: "None", normalBalance: "Debit", isActive: true },
   { code: "5002", name: "Purchases", accountGroup: "COGS", accountType: "Expense", bsSection: "None", plSection: "Purchases", cfLink: "OperatingPayment", normalBalance: "Debit", isActive: true },
   { code: "5003", name: "Closing Stock", accountGroup: "COGS", accountType: "Expense", bsSection: "None", plSection: "ClosingStock", cfLink: "None", normalBalance: "Credit", isActive: true },
+  { code: "5004", name: "Cost of Goods Sold", accountGroup: "COGS", accountType: "Expense", bsSection: "None", plSection: "Cogs", cfLink: "None", normalBalance: "Debit", isActive: true },
   { code: "6001", name: "Salaries & Wages", accountGroup: "Operating Expenses", accountType: "Expense", bsSection: "None", plSection: "OperatingExpense", cfLink: "OperatingPayment", normalBalance: "Debit", isActive: true },
   { code: "6002", name: "Rent Expense", accountGroup: "Operating Expenses", accountType: "Expense", bsSection: "None", plSection: "OperatingExpense", cfLink: "OperatingPayment", normalBalance: "Debit", isActive: true },
   { code: "6003", name: "Utility Bills", accountGroup: "Operating Expenses", accountType: "Expense", bsSection: "None", plSection: "OperatingExpense", cfLink: "OperatingPayment", normalBalance: "Debit", isActive: true },

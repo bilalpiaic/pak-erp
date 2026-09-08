@@ -10,6 +10,7 @@
     "build": "bash scripts/vercel-build.sh",
     "start": "next start",
     "lint": "eslint",
+    "test": "tsx --test src/lib/stock/wac.test.ts",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

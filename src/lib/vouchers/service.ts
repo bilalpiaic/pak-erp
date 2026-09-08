@@ -13,6 +13,7 @@ import { ACCOUNT_CODES } from "@/lib/accounts/codes";
 import { adjustPartyOutstanding } from "@/lib/parties/outstanding";
 
 import {
+  DOCUMENT_VOUCHER_TYPES,
   VOUCHER_TYPES,
   type VoucherDTO,
   type VoucherInput,
@@ -35,6 +36,8 @@ type VoucherWithLines = Voucher & {
   >;
   attachments: VoucherAttachment[];
   salesInvoice?: { id: bigint; invoiceNo: string } | null;
+  purchaseInvoice?: { id: bigint; invoiceNo: string } | null;
+  stockAdjustment?: { id: bigint; adjustmentNo: string } | null;
 };
 
 function decimalString(value: { toString(): string }): string {
@@ -114,6 +117,12 @@ const voucherInclude = {
   salesInvoice: {
     select: { id: true, invoiceNo: true },
   },
+  purchaseInvoice: {
+    select: { id: true, invoiceNo: true },
+  },
+  stockAdjustment: {
+    select: { id: true, adjustmentNo: true },
+  },
 };
 
 export async function listVouchers(
@@ -130,8 +139,8 @@ export async function listVouchers(
     }
     where.voucherType = query.voucherType as VoucherType;
   } else {
-    // Sales invoices are managed under /sales-invoices
-    where.voucherType = { not: "SI" };
+    // Document vouchers (SI / PI / STJ) have their own screens
+    where.voucherType = { notIn: [...DOCUMENT_VOUCHER_TYPES] };
   }
 
   if (query.status && query.status !== "All") {
@@ -204,11 +213,20 @@ async function assertAccountsUsable(
 
   const accounts = await prisma.account.findMany({
     where: { companyId, id: { in: uniqueIds } },
-    select: { id: true, code: true, isActive: true },
+    select: { id: true, code: true, isActive: true, bsSection: true },
   });
 
   if (accounts.length !== uniqueIds.length) {
     throw new Error("One or more accounts were not found for this company.");
+  }
+
+  const stockLines = accounts.filter(
+    (account) => account.code === ACCOUNT_CODES.STOCK_IN_TRADE || account.bsSection === "Stock",
+  );
+  if (stockLines.length) {
+    throw new Error(
+      "Stock in Trade (1020) can only move through Purchase Invoices, Sales Invoices, or Stock Adjustments.",
+    );
   }
 
   if (requireActive) {
@@ -224,10 +242,22 @@ async function assertAccountsUsable(
 function assertManualVoucher(voucher: {
   voucherType: string;
   salesInvoice?: { id: bigint } | null;
+  purchaseInvoice?: { id: bigint } | null;
+  stockAdjustment?: { id: bigint } | null;
 }): void {
   if (voucher.voucherType === "SI" || voucher.salesInvoice) {
     throw new Error(
       "Sales invoices must be unposted or deleted from Sales Invoices so the invoice and ledger stay in sync.",
+    );
+  }
+  if (voucher.voucherType === "PI" || voucher.purchaseInvoice) {
+    throw new Error(
+      "Purchase invoices must be unposted or deleted from Purchase Invoices so stock and the ledger stay in sync.",
+    );
+  }
+  if (voucher.voucherType === "STJ" || voucher.stockAdjustment) {
+    throw new Error(
+      "Stock adjustments must be unposted or deleted from Stock Adjustments so quantity and the ledger stay in sync.",
     );
   }
 }

@@ -1,6 +1,7 @@
 import { SalesInvoiceEntry } from "@/components/sales-invoices/SalesInvoiceEntry";
 import { PageShell } from "@/components/ui/PageShell";
 import { getPrimaryCompany } from "@/lib/company/service";
+import { listItems } from "@/lib/items/service";
 import { listParties } from "@/lib/parties/service";
 import { getSalesInvoice, listSalesInvoices } from "@/lib/sales-invoices/service";
 
@@ -16,18 +17,21 @@ export default async function SalesInvoicesPage({
   const params = await searchParams;
   let invoices: Awaited<ReturnType<typeof listSalesInvoices>>["invoices"] = [];
   let parties: Awaited<ReturnType<typeof listParties>>["parties"] = [];
+  let items: Awaited<ReturnType<typeof listItems>>["items"] = [];
   let company: Awaited<ReturnType<typeof getPrimaryCompany>> = null;
   let openInvoice: Awaited<ReturnType<typeof getSalesInvoice>> = null;
   let loadError: string | null = null;
 
   try {
-    const [invoiceData, partyData, companyData] = await Promise.all([
+    const [invoiceData, partyData, itemData, companyData] = await Promise.all([
       listSalesInvoices(),
       listParties({ active: "active" }),
+      listItems(),
       getPrimaryCompany(),
     ]);
     invoices = invoiceData.invoices;
     parties = partyData.parties;
+    items = itemData.items;
     company = companyData;
     if (params.id?.trim()) {
       openInvoice = await getSalesInvoice(params.id.trim());
@@ -42,11 +46,12 @@ export default async function SalesInvoicesPage({
   return (
     <PageShell
       title="Sales Invoices"
-      description="Create sales invoices with party, PO#, and item lines. Posting writes Dr Trade Debtors / Cr Sales. Administrators can unpost a posted invoice to edit or delete it."
+      description="Create sales invoices with party, PO#, and item lines. Posting writes Dr Trade Debtors / Cr Sales. Stock-tracked items also post Dr COGS / Cr Stock at weighted average cost. Administrators can unpost a posted invoice to edit or delete it."
     >
       <SalesInvoiceEntry
         initialInvoices={invoices}
         parties={parties}
+        items={items}
         company={company}
         openInvoice={openInvoice}
         loadError={loadError}

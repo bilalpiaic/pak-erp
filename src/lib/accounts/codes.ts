@@ -3,9 +3,11 @@ export const ACCOUNT_CODES = {
   CASH_IN_HAND: "1001",
   BANK_HBL: "1002",
   TRADE_DEBTORS: "1010",
+  STOCK_IN_TRADE: "1020",
   TRADE_CREDITORS: "2001",
   SALES_TAXABLE: "4001",
   SALES_EXEMPT: "4002",
+  COGS: "5004",
 } as const;
 
 export const PROTECTED_ACCOUNT_CODES = new Set<string>(Object.values(ACCOUNT_CODES));

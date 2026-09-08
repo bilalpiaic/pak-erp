@@ -1,6 +1,6 @@
 import { centsToDecimalString, isBalanced, sumCents, toCents } from "@/lib/accounting/money";
 
-import { ALL_VOUCHER_TYPES, type VoucherInput, type VoucherLineInput } from "./types";
+import { ALL_VOUCHER_TYPES, VOUCHER_TYPES, type VoucherInput, type VoucherLineInput } from "./types";
 
 export type NormalizedLine = {
   accountId: bigint;
@@ -39,6 +39,8 @@ export function validateVoucherInput(
 
   if (!ALL_VOUCHER_TYPES.includes(input.voucherType)) {
     errors.push("Voucher type is invalid.");
+  } else if (!(VOUCHER_TYPES as readonly string[]).includes(input.voucherType)) {
+    errors.push("Sales invoices, purchase invoices, and stock journals are created from their own screens.");
   }
 
   if (!input.voucherDate || !parseVoucherDate(input.voucherDate)) {

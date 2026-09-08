@@ -1,0 +1,63 @@
+import { NextResponse } from "next/server";
+
+import { actorName, authErrorResponse, requireAdmin, requireSession } from "@/lib/auth/request";
+import {
+  deleteDraftPurchaseInvoice,
+  getPurchaseInvoice,
+  updateDraftPurchaseInvoice,
+} from "@/lib/purchase-invoices/service";
+import type { PurchaseInvoiceInput } from "@/lib/purchase-invoices/types";
+
+export const runtime = "nodejs";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(_request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const invoice = await getPurchaseInvoice(id);
+    if (!invoice) return NextResponse.json({ error: "Purchase invoice not found." }, { status: 404 });
+    return NextResponse.json({ invoice });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to load purchase invoice.";
+    console.error("GET /api/purchase-invoices/[id]", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request, context: RouteContext) {
+  try {
+    const session = await requireSession();
+    const { id } = await context.params;
+    const body = (await request.json()) as PurchaseInvoiceInput;
+    const invoice = await updateDraftPurchaseInvoice(id, body, actorName(session));
+    return NextResponse.json({ invoice });
+  } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
+    const message = error instanceof Error ? error.message : "Failed to update purchase invoice.";
+    const status = message.includes("not found")
+      ? 404
+      : message.includes("Only draft") || message.includes("required") || message.includes("must")
+        ? 400
+        : 500;
+    console.error("PATCH /api/purchase-invoices/[id]", error);
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  try {
+    const session = await requireAdmin();
+    const { id } = await context.params;
+    await deleteDraftPurchaseInvoice(id, actorName(session));
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
+    const message = error instanceof Error ? error.message : "Failed to delete purchase invoice.";
+    const status = message.includes("not found") ? 404 : message.includes("Only draft") ? 400 : 500;
+    console.error("DELETE /api/purchase-invoices/[id]", error);
+    return NextResponse.json({ error: message }, { status });
+  }
+}

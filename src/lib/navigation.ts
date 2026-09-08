@@ -26,6 +26,16 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "Inventory",
+    items: [
+      { href: "/items", label: "Items" },
+      { href: "/purchase-invoices", label: "Purchase Invoices" },
+      { href: "/stock-adjustments", label: "Stock Adjustments" },
+      { href: "/stock-ledger", label: "Stock Ledger" },
+      { href: "/stock-valuation", label: "Stock Valuation" },
+    ],
+  },
+  {
     title: "Reports",
     items: [
       { href: "/reports/trial-balance", label: "Trial Balance" },

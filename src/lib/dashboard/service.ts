@@ -95,6 +95,7 @@ export async function getDashboard(): Promise<DashboardResult> {
   }
 
   const cashBal = signed("1001") + signed("1002") + signed("1003");
+  const stockBal = signed("1020");
   const netMTD = revMTD - expMTD;
 
   const kpis: DashboardKpi[] = [
@@ -108,6 +109,7 @@ export async function getDashboard(): Promise<DashboardResult> {
       tone: netMTD >= 0 ? "success" : "danger",
     },
     { label: "Cash & Bank", value: moneyFromCents(cashBal), tone: "info" },
+    { label: "Stock in Trade", value: moneyFromCents(stockBal), tone: "info" },
   ];
 
   const recent: DashboardRecentVoucher[] = vouchers.map((v) => {

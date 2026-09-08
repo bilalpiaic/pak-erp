@@ -33,6 +33,7 @@ export const PL_SECTIONS = [
   "OpeningStock",
   "Purchases",
   "ClosingStock",
+  "Cogs",
   "OperatingExpense",
   "Depreciation",
   "FinancialCharges",
@@ -91,6 +92,7 @@ export const PL_SECTION_LABELS: Record<PlSection, string> = {
   OpeningStock: "Opening Stock (COGS)",
   Purchases: "Purchases (COGS)",
   ClosingStock: "Closing Stock (COGS)",
+  Cogs: "Cost of Goods Sold",
   OperatingExpense: "Operating Expenses",
   Depreciation: "Depreciation",
   FinancialCharges: "Financial Charges",
@@ -164,6 +166,7 @@ export const PL_BY_TYPE: Record<AccountType, readonly PlSection[]> = {
     "OpeningStock",
     "Purchases",
     "ClosingStock",
+    "Cogs",
     "OperatingExpense",
     "Depreciation",
     "FinancialCharges",
@@ -322,6 +325,7 @@ export function suggestCfLink(
   if (plSection === "Depreciation") return "NonCashAddBack";
   if (
     plSection === "Purchases" ||
+    plSection === "Cogs" ||
     plSection === "OperatingExpense" ||
     plSection === "FinancialCharges" ||
     plSection === "IncomeTax" ||

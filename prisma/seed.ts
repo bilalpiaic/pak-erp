@@ -23,9 +23,15 @@ async function main() {
     // Clear in dependency order for idempotent re-seed.
     await prisma.auditLog.deleteMany();
     await prisma.voucherAttachment.deleteMany();
-    await prisma.voucherLine.deleteMany();
+    await prisma.stockMovement.deleteMany();
+    await prisma.stockAdjustmentLine.deleteMany();
+    await prisma.purchaseInvoiceLine.deleteMany();
     await prisma.salesInvoiceLine.deleteMany();
+    await prisma.stockAdjustment.deleteMany();
+    await prisma.purchaseInvoice.deleteMany();
     await prisma.salesInvoice.deleteMany();
+    await prisma.item.deleteMany();
+    await prisma.voucherLine.deleteMany();
     await prisma.voucher.deleteMany();
     await prisma.party.deleteMany();
     await prisma.account.deleteMany();
@@ -73,6 +79,10 @@ async function main() {
       parties: await prisma.party.count(),
       vouchers: await prisma.voucher.count(),
       voucherLines: await prisma.voucherLine.count(),
+      items: await prisma.item.count(),
+      purchaseInvoices: await prisma.purchaseInvoice.count(),
+      stockAdjustments: await prisma.stockAdjustment.count(),
+      stockMovements: await prisma.stockMovement.count(),
       salesInvoices: await prisma.salesInvoice.count(),
       auditLogs: await prisma.auditLog.count(),
       users: await prisma.user.count(),
