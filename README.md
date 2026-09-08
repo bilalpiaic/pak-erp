@@ -126,6 +126,19 @@ PostgreSQL-backed accounting application (V1) replacing the browser/`localStorag
 - Sales Invoices: check / repair SI voucher link, status, party, and amount (`/api/sales-invoices/reconcile`)
 - Administrators can delete unreconciled SI vouchers that have no sales invoice (posted orphans reverse party outstanding)
 
+### Phase 17 — Perpetual inventory (quantity + value)
+
+- Item master (`/items`) classified as **Saleable** (from production / BOMs) or **Consumable** (purchased inputs), with SKU, unit, and stock tracking
+- Dual-effect posting in one transaction: quantity movements plus GL
+- Weighted average cost (WAC); integer 4-dp quantity units; money stays integer cents
+- Purchase invoices post `Dr 1020 Stock / Cr 2001 Creditors` and quantity IN at line cost (consumable items)
+- Sales invoices with a saleable stock item post extra `Dr 5004 COGS / Cr 1020` and quantity OUT at WAC
+- Stock journals (opening / gain / loss / count) post through 1020; manual JVs to 1020 are blocked
+- Negative stock and backdated posts (when a later movement exists) are rejected
+- Draft = no GL and no stock; unpost deletes movements; cancel keeps rows but live qty is posted-only
+- Stock ledger, stock valuation (tied to GL 1020), dashboard Stock in Trade KPI
+- P&amp;L uses perpetual COGS (`5004`) when movements exist; otherwise Opening + Purchases − Closing
+
 The legacy single-file prototype lives in `legacy/index.html`.
 
 ## Getting started

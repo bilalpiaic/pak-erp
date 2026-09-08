@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       }
       if (!(VOUCHER_TYPES as readonly string[]).includes(type)) {
         return NextResponse.json(
-          { error: "Sales invoice numbers are allocated under Sales Invoices." },
+          { error: "Document numbers are allocated under their own screens." },
           { status: 400 },
         );
       }

@@ -10,6 +10,7 @@ import { OriginLink } from "@/components/ui/OriginLink";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { CompanyDTO } from "@/lib/company/types";
+import type { ItemDTO } from "@/lib/items/types";
 import { partyLedgerHref, salesInvoiceHref, voucherHref } from "@/lib/links";
 import type { SiReconcileResult } from "@/lib/sales-invoices/reconcile-types";
 import type { PartyDTO } from "@/lib/parties/types";
@@ -18,6 +19,7 @@ import type { SalesInvoiceDTO } from "@/lib/sales-invoices/types";
 type SalesInvoiceEntryProps = {
   initialInvoices: SalesInvoiceDTO[];
   parties: PartyDTO[];
+  items: ItemDTO[];
   company: CompanyDTO | null;
   openInvoice?: SalesInvoiceDTO | null;
   loadError?: string | null;
@@ -42,6 +44,7 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 export function SalesInvoiceEntry({
   initialInvoices,
   parties,
+  items,
   company,
   openInvoice = null,
   loadError = null,
@@ -281,6 +284,7 @@ export function SalesInvoiceEntry({
         invoiceNo={view.invoiceNo}
         initial={view.invoice}
         parties={parties}
+        items={items}
         company={company}
         autoPrint={Boolean(view.autoPrint)}
         onBack={() => {

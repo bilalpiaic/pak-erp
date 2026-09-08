@@ -25,7 +25,9 @@ export async function POST(_request: Request, context: RouteContext) {
       : message.includes("Only draft") ||
           message.includes("required") ||
           message.includes("must") ||
-          message.includes("missing")
+          message.includes("missing") ||
+          message.includes("saleable") ||
+          message.includes("consumable")
         ? 400
         : 500;
     console.error("POST /api/sales-invoices/[id]/post", error);

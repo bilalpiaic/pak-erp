@@ -308,10 +308,16 @@ export async function getProfitLoss(query: ReportQuery = {}) {
   const a = ctx.accounts;
 
   const grossRev = sumPlPeriod(p, a, "Sales", "creditNet");
+  const perpetualCogs = Math.max(sumPlPeriod(p, a, "Cogs"), 0);
   const openAmt = Math.max(sumPlPeriod(p, a, "OpeningStock"), 0);
   const purchAmt = Math.max(sumPlPeriod(p, a, "Purchases"), 0);
   const closeAmt = Math.max(sumPlPeriod(p, a, "ClosingStock", "creditNet"), 0);
-  const cogs = openAmt + purchAmt - closeAmt;
+  const periodicCogs = openAmt + purchAmt - closeAmt;
+
+  const { countPostedStockMovements } = await import("@/lib/stock/service");
+  const movementCount = await countPostedStockMovements();
+  const usePerpetual = movementCount > 0 || perpetualCogs > 0;
+  const cogs = usePerpetual ? perpetualCogs : periodicCogs;
   const grossProfit = grossRev - cogs;
 
   const opexDetails = plDetailLines(p, a, "OperatingExpense");
@@ -345,9 +351,13 @@ export async function getProfitLoss(query: ReportQuery = {}) {
     lines: [
       row("Net Revenue / Turnover", grossRev, { bold: true }),
       row("Less: Cost of Goods Sold", 0, { header: true }),
-      row("Opening Stock", openAmt, { indent: true }),
-      row("Add: Purchases", purchAmt, { indent: true }),
-      row("Less: Closing Stock", -closeAmt, { indent: true }),
+      ...(usePerpetual
+        ? [row("Cost of Goods Sold", cogs, { indent: true })]
+        : [
+            row("Opening Stock", openAmt, { indent: true }),
+            row("Add: Purchases", purchAmt, { indent: true }),
+            row("Less: Closing Stock", -closeAmt, { indent: true }),
+          ]),
       row("Total Cost of Goods Sold", cogs, { bold: true }),
       row("GROSS PROFIT", grossProfit, { bold: true }),
       row("Operating Expenses", 0, { header: true }),

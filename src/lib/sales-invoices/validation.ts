@@ -1,15 +1,25 @@
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
+import {
+  amountCentsFromQtyAndRate,
+  qtyUnitsToDecimalString,
+  toQtyUnits,
+  toQuantityOrRate,
+} from "@/lib/accounting/quantity";
 
 import type { SalesInvoiceInput, SalesInvoiceLineInput } from "./types";
 
 export type NormalizedInvoiceLine = {
+  itemId: string | null;
   item: string;
   detail: string | null;
   quantity: string;
   rate: string;
   amount: string;
   amountCents: number;
+  qtyUnits: number;
 };
+
+export { toQuantityOrRate };
 
 export type InvoiceValidationResult = {
   errors: string[];
@@ -29,36 +39,19 @@ export function parseInvoiceDate(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** Parse quantity/rate allowing up to 4 decimal places. */
-export function toQuantityOrRate(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "number") {
-    if (!Number.isFinite(value) || value < 0) return null;
-    return value;
-  }
-  const cleaned = value.replace(/,/g, "").trim();
-  if (!/^\d+(\.\d{1,4})?$/.test(cleaned)) return null;
-  const n = Number(cleaned);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return n;
-}
-
-function formatQtyRate(value: number): string {
-  const fixed = value.toFixed(4).replace(/\.?0+$/, "");
-  return fixed.includes(".") ? fixed : `${fixed}.0`;
-}
-
 function normalizeLine(
   line: SalesInvoiceLineInput,
   index: number,
   errors: string[],
 ): NormalizedInvoiceLine | null {
   const item = line.item?.trim() ?? "";
-  const quantity = toQuantityOrRate(line.quantity);
-  const rate = toQuantityOrRate(line.rate);
+  const itemId = line.itemId?.trim() || null;
+  const qtyUnits = toQtyUnits(line.quantity);
+  const rateUnits = toQtyUnits(line.rate);
 
   const empty =
     !item &&
+    !itemId &&
     (line.detail == null || !String(line.detail).trim()) &&
     (line.quantity === "" || line.quantity == null) &&
     (line.rate === "" || line.rate == null) &&
@@ -66,20 +59,20 @@ function normalizeLine(
 
   if (empty) return null;
 
-  if (!item) {
+  if (!item && !itemId) {
     errors.push(`Line ${index + 1}: item is required.`);
     return null;
   }
-  if (quantity === null || quantity <= 0) {
+  if (qtyUnits === null || qtyUnits <= 0) {
     errors.push(`Line ${index + 1}: quantity must be a positive number.`);
     return null;
   }
-  if (rate === null) {
+  if (rateUnits === null) {
     errors.push(`Line ${index + 1}: rate must be a valid non-negative number.`);
     return null;
   }
 
-  const computedCents = Math.round(quantity * rate * 100);
+  const computedCents = amountCentsFromQtyAndRate(qtyUnits, rateUnits);
   let amountCents = computedCents;
   if (line.amount !== undefined && line.amount !== null && line.amount !== "") {
     const parsed = toCents(line.amount);
@@ -102,12 +95,14 @@ function normalizeLine(
   }
 
   return {
-    item,
+    itemId,
+    item: item || itemId || "",
     detail: normalizeOptional(line.detail ?? null),
-    quantity: formatQtyRate(quantity),
-    rate: formatQtyRate(rate),
+    quantity: qtyUnitsToDecimalString(qtyUnits),
+    rate: qtyUnitsToDecimalString(rateUnits),
     amount: centsToDecimalString(amountCents),
     amountCents,
+    qtyUnits,
   };
 }
 

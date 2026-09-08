@@ -264,6 +264,12 @@ export async function importVouchersFromCsv(
     if (type === "SI") {
       item.errors.push("Sales invoices cannot be imported here — use Sales Invoices.");
     }
+    if (type === "PI") {
+      item.errors.push("Purchase invoices cannot be imported here — use Purchase Invoices.");
+    }
+    if (type === "STJ") {
+      item.errors.push("Stock adjustments cannot be imported here — use Stock Adjustments.");
+    }
 
     const voucherDate = parseImportDate(first.voucherDate);
     if (!voucherDate) {

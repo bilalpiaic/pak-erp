@@ -8,6 +8,23 @@ export function salesInvoiceHref(id: string): string {
   return `/sales-invoices?id=${encodeURIComponent(id)}`;
 }
 
+export function purchaseInvoiceHref(id: string): string {
+  return `/purchase-invoices?id=${encodeURIComponent(id)}`;
+}
+
+export function itemHref(id?: string | null): string {
+  if (!id) return "/items";
+  return `/items?id=${encodeURIComponent(id)}`;
+}
+
+export function stockLedgerHref(itemId: string): string {
+  return `/stock-ledger?itemId=${encodeURIComponent(itemId)}`;
+}
+
+export function stockAdjustmentHref(id: string): string {
+  return `/stock-adjustments?id=${encodeURIComponent(id)}`;
+}
+
 export function partyLedgerHref(
   partyId: string,
   kind: "debtor" | "creditor" = "debtor",
@@ -46,5 +63,5 @@ export const REPORT_LABEL_ACCOUNT_CODES: Record<string, string> = {
   "Sales - Taxable": "4001",
   "Sales - Exempt": "4002",
   Purchases: "5002",
-  "Cost of Goods Sold": "5002",
+  "Cost of Goods Sold": "5004",
 };

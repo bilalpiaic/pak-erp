@@ -17,6 +17,8 @@ enum VoucherType {
   CRV
   JV
   SI
+  PI
+  STJ
 }
 
 enum VoucherStatus {
@@ -52,6 +54,40 @@ enum UserRole {
   USER
 }
 
+enum ItemCategory {
+  /// Finished output from production (BOMs) — sold on sales invoices.
+  Saleable
+  /// Purchased inputs used in production — bought on purchase invoices.
+  Consumable
+}
+
+enum StockMoveType {
+  OPENING
+  PURCHASE
+  SALE
+  ADJUSTMENT
+  PURCHASE_RETURN
+  SALE_RETURN
+}
+
+enum StockMoveDirection {
+  IN
+  OUT
+}
+
+enum StockSourceDocument {
+  SalesInvoice
+  PurchaseInvoice
+  StockAdjustment
+}
+
+enum StockAdjustmentReason {
+  OPENING
+  GAIN
+  LOSS
+  COUNT
+}
+
 model Company {
   id               BigInt   @id @default(autoincrement())
   name             String   @db.VarChar(200)
@@ -67,12 +103,16 @@ model Company {
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  accounts       Account[]
-  vouchers       Voucher[]
-  parties        Party[]
-  fiscalYears    FiscalYear[]
-  auditLogs      AuditLog[]
-  salesInvoices  SalesInvoice[]
+  accounts           Account[]
+  vouchers           Voucher[]
+  parties            Party[]
+  fiscalYears        FiscalYear[]
+  auditLogs          AuditLog[]
+  salesInvoices      SalesInvoice[]
+  items              Item[]
+  stockMovements     StockMovement[]
+  purchaseInvoices   PurchaseInvoice[]
+  stockAdjustments   StockAdjustment[]
 
   @@index([isDemo])
   @@map("companies")
@@ -97,10 +137,12 @@ model Party {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company       Company        @relation(fields: [companyId], references: [id])
-  account       Account?       @relation(fields: [accountId], references: [id])
-  vouchers      Voucher[]
-  salesInvoices SalesInvoice[]
+  company            Company            @relation(fields: [companyId], references: [id])
+  account            Account?           @relation(fields: [accountId], references: [id])
+  vouchers           Voucher[]
+  salesInvoices      SalesInvoice[]
+  purchaseInvoices   PurchaseInvoice[]
+  stockMovements     StockMovement[]
 
   @@unique([companyId, name])
   @@index([companyId, partyType])
@@ -174,11 +216,14 @@ model Voucher {
   cancelledAt DateTime?     @map("cancelled_at") @db.Timestamptz(6)
   updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company      Company        @relation(fields: [companyId], references: [id])
-  party        Party?         @relation(fields: [partyId], references: [id])
-  lines        VoucherLine[]
-  attachments  VoucherAttachment[]
-  salesInvoice SalesInvoice?
+  company          Company            @relation(fields: [companyId], references: [id])
+  party            Party?             @relation(fields: [partyId], references: [id])
+  lines            VoucherLine[]
+  attachments      VoucherAttachment[]
+  salesInvoice     SalesInvoice?
+  purchaseInvoice  PurchaseInvoice?
+  stockAdjustment  StockAdjustment?
+  stockMovements   StockMovement[]
 
   @@unique([companyId, voucherNo])
   @@index([companyId, voucherDate])
@@ -225,6 +270,8 @@ model SalesInvoiceLine {
   id             BigInt  @id @default(autoincrement())
   salesInvoiceId BigInt  @map("sales_invoice_id")
   lineNo         Int     @map("line_no")
+  /// Optional stock item. Null = non-stock / free-text line (revenue only).
+  itemId         BigInt? @map("item_id")
   item           String  @db.VarChar(200)
   detail         String? @db.Text
   quantity       Decimal @db.Decimal(18, 4)
@@ -232,8 +279,10 @@ model SalesInvoiceLine {
   amount         Decimal @db.Decimal(18, 2)
 
   salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+  stockItem    Item?        @relation(fields: [itemId], references: [id])
 
   @@index([salesInvoiceId])
+  @@index([itemId])
   @@map("sales_invoice_lines")
 }
 
@@ -304,4 +353,165 @@ model User {
   @@index([isActive])
   @@index([isDemo])
   @@map("users")
+}
+
+/// Stock item master. On-hand qty/value is derived from posted stock_movements.
+model Item {
+  id              BigInt       @id @default(autoincrement())
+  companyId       BigInt       @map("company_id")
+  sku             String       @db.VarChar(40)
+  name            String       @db.VarChar(200)
+  category        ItemCategory
+  unit            String       @default("Pcs") @db.VarChar(20)
+  trackStock      Boolean      @default(true) @map("track_stock")
+  isActive        Boolean      @default(true) @map("is_active")
+  defaultSaleRate Decimal?     @map("default_sale_rate") @db.Decimal(18, 4)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company              Company               @relation(fields: [companyId], references: [id])
+  salesInvoiceLines    SalesInvoiceLine[]
+  purchaseInvoiceLines PurchaseInvoiceLine[]
+  stockMovements       StockMovement[]
+  adjustmentLines      StockAdjustmentLine[]
+
+  @@unique([companyId, sku])
+  @@unique([companyId, name])
+  @@index([companyId, isActive])
+  @@index([companyId, category])
+  @@map("items")
+}
+
+/// Quantity + value ledger. Rows exist only while the source voucher is POSTED
+/// (created on post, deleted on unpost). Cancelled vouchers keep rows but
+/// queries filter voucher.status = POSTED, so they drop out of on-hand.
+model StockMovement {
+  id                 BigInt               @id @default(autoincrement())
+  companyId          BigInt               @map("company_id")
+  itemId             BigInt               @map("item_id")
+  moveDate           DateTime             @map("move_date") @db.Date
+  direction          StockMoveDirection
+  moveType           StockMoveType        @map("move_type")
+  quantity           Decimal              @db.Decimal(18, 4)
+  unitCostCents      Int                  @map("unit_cost_cents")
+  valueCents         Int                  @map("value_cents")
+  voucherId          BigInt               @map("voucher_id")
+  sourceDocument     StockSourceDocument  @map("source_document")
+  sourceDocumentId   BigInt               @map("source_document_id")
+  sourceLineNo       Int                  @map("source_line_no")
+  partyId            BigInt?              @map("party_id")
+  narration          String?              @db.Text
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id])
+  item    Item    @relation(fields: [itemId], references: [id])
+  voucher Voucher @relation(fields: [voucherId], references: [id])
+  party   Party?  @relation(fields: [partyId], references: [id])
+
+  @@index([companyId, itemId, moveDate])
+  @@index([voucherId])
+  @@index([sourceDocument, sourceDocumentId])
+  @@index([partyId])
+  @@map("stock_movements")
+}
+
+/// Commercial purchase invoice — posts Dr Stock in Trade / Cr Trade Creditors via linked PI voucher.
+model PurchaseInvoice {
+  id          BigInt        @id @default(autoincrement())
+  companyId   BigInt        @map("company_id")
+  voucherId   BigInt?       @unique @map("voucher_id")
+  invoiceNo   String        @map("invoice_no") @db.VarChar(50)
+  invoiceDate DateTime      @map("invoice_date") @db.Date
+  partyId     BigInt        @map("party_id")
+  partyName   String        @map("party_name") @db.VarChar(200)
+  partyNtn    String?       @map("party_ntn") @db.VarChar(50)
+  billNo      String?       @map("bill_no") @db.VarChar(100)
+  narration   String?       @db.Text
+  status      VoucherStatus @default(DRAFT)
+  totalAmount Decimal       @default(0.00) @map("total_amount") @db.Decimal(18, 2)
+  createdBy   String?       @map("created_by") @db.VarChar(100)
+  postedBy    String?       @map("posted_by") @db.VarChar(100)
+  cancelledBy String?       @map("cancelled_by") @db.VarChar(100)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  postedAt    DateTime?     @map("posted_at") @db.Timestamptz(6)
+  cancelledAt DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company                @relation(fields: [companyId], references: [id])
+  party   Party                  @relation(fields: [partyId], references: [id])
+  voucher Voucher?               @relation(fields: [voucherId], references: [id])
+  lines   PurchaseInvoiceLine[]
+
+  @@unique([companyId, invoiceNo])
+  @@index([companyId, invoiceDate])
+  @@index([companyId, status])
+  @@index([partyId])
+  @@map("purchase_invoices")
+}
+
+model PurchaseInvoiceLine {
+  id                BigInt  @id @default(autoincrement())
+  purchaseInvoiceId BigInt  @map("purchase_invoice_id")
+  lineNo            Int     @map("line_no")
+  itemId            BigInt  @map("item_id")
+  itemName          String  @map("item_name") @db.VarChar(200)
+  detail            String? @db.Text
+  quantity          Decimal @db.Decimal(18, 4)
+  rate              Decimal @db.Decimal(18, 4)
+  amount            Decimal @db.Decimal(18, 2)
+
+  purchaseInvoice PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  stockItem       Item            @relation(fields: [itemId], references: [id])
+
+  @@index([purchaseInvoiceId])
+  @@index([itemId])
+  @@map("purchase_invoice_lines")
+}
+
+/// Opening / gain / loss / count — posts Dr/Cr 1020 against capital or P&L via linked STJ voucher.
+model StockAdjustment {
+  id             BigInt                 @id @default(autoincrement())
+  companyId      BigInt                 @map("company_id")
+  voucherId      BigInt?                @unique @map("voucher_id")
+  adjustmentNo   String                 @map("adjustment_no") @db.VarChar(50)
+  adjustmentDate DateTime               @map("adjustment_date") @db.Date
+  reason         StockAdjustmentReason
+  narration      String?                @db.Text
+  status         VoucherStatus          @default(DRAFT)
+  createdBy      String?                @map("created_by") @db.VarChar(100)
+  postedBy       String?                @map("posted_by") @db.VarChar(100)
+  cancelledBy    String?                @map("cancelled_by") @db.VarChar(100)
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  postedAt       DateTime?              @map("posted_at") @db.Timestamptz(6)
+  cancelledAt    DateTime?              @map("cancelled_at") @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company                @relation(fields: [companyId], references: [id])
+  voucher Voucher?               @relation(fields: [voucherId], references: [id])
+  lines   StockAdjustmentLine[]
+
+  @@unique([companyId, adjustmentNo])
+  @@index([companyId, adjustmentDate])
+  @@index([companyId, status])
+  @@map("stock_adjustments")
+}
+
+model StockAdjustmentLine {
+  id                 BigInt              @id @default(autoincrement())
+  stockAdjustmentId  BigInt              @map("stock_adjustment_id")
+  lineNo             Int                 @map("line_no")
+  itemId             BigInt              @map("item_id")
+  itemName           String              @map("item_name") @db.VarChar(200)
+  direction          StockMoveDirection
+  quantity           Decimal             @db.Decimal(18, 4)
+  /// Required for IN (opening/gain). OUT uses WAC and ignores this except as display.
+  unitCost           Decimal             @map("unit_cost") @db.Decimal(18, 4)
+  amount             Decimal             @db.Decimal(18, 2)
+
+  stockAdjustment StockAdjustment @relation(fields: [stockAdjustmentId], references: [id], onDelete: Cascade)
+  stockItem       Item            @relation(fields: [itemId], references: [id])
+
+  @@index([stockAdjustmentId])
+  @@index([itemId])
+  @@map("stock_adjustment_lines")
 }

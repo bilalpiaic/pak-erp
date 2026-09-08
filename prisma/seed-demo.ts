@@ -57,7 +57,7 @@ const DEMO_PARTIES: DemoPartySeed[] = [
     partyType: "Creditor",
     phone: "+92-41-555-666",
     outstandingDays: 35,
-    outstandingAmount: "320000.00",
+    outstandingAmount: "110000.00",
     whtStatus: "Deducted",
   },
   {
@@ -88,6 +88,9 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
   parties: number;
   vouchers: number;
   salesInvoices: number;
+  purchaseInvoices: number;
+  stockAdjustments: number;
+  items: number;
 }> {
   const existingDemo = await prisma.company.findMany({
     where: { isDemo: true },
@@ -100,13 +103,23 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
     await prisma.voucherAttachment.deleteMany({
       where: { voucher: { companyId: { in: demoIds } } },
     });
-    await prisma.voucherLine.deleteMany({
-      where: { voucher: { companyId: { in: demoIds } } },
+    await prisma.stockMovement.deleteMany({ where: { companyId: { in: demoIds } } });
+    await prisma.stockAdjustmentLine.deleteMany({
+      where: { stockAdjustment: { companyId: { in: demoIds } } },
+    });
+    await prisma.purchaseInvoiceLine.deleteMany({
+      where: { purchaseInvoice: { companyId: { in: demoIds } } },
     });
     await prisma.salesInvoiceLine.deleteMany({
       where: { salesInvoice: { companyId: { in: demoIds } } },
     });
+    await prisma.stockAdjustment.deleteMany({ where: { companyId: { in: demoIds } } });
+    await prisma.purchaseInvoice.deleteMany({ where: { companyId: { in: demoIds } } });
     await prisma.salesInvoice.deleteMany({ where: { companyId: { in: demoIds } } });
+    await prisma.item.deleteMany({ where: { companyId: { in: demoIds } } });
+    await prisma.voucherLine.deleteMany({
+      where: { voucher: { companyId: { in: demoIds } } },
+    });
     await prisma.voucher.deleteMany({ where: { companyId: { in: demoIds } } });
     await prisma.party.deleteMany({ where: { companyId: { in: demoIds } } });
     await prisma.account.deleteMany({ where: { companyId: { in: demoIds } } });
@@ -186,12 +199,49 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
   const cash = byCode["1001"];
   const bank = byCode["1002"];
   const debtors = byCode["1010"];
+  const stock = byCode["1020"];
   const creditors = byCode["2001"];
   const capital = byCode["3001"];
   const sales = byCode["4001"];
-  const purchases = byCode["5002"];
+  const cogs = byCode["5004"];
   const salaries = byCode["6001"];
   const rent = byCode["6002"];
+
+  const fabric = await prisma.item.create({
+    data: {
+      companyId: company.id,
+      sku: "FAB-GRG",
+      name: "Greige Fabric",
+      category: "Consumable",
+      unit: "Mtr",
+      trackStock: true,
+      isActive: true,
+    },
+  });
+  const jeans = await prisma.item.create({
+    data: {
+      companyId: company.id,
+      sku: "FG-DNM-SLIM",
+      name: "Denim Jeans — Slim Fit",
+      category: "Saleable",
+      unit: "Pcs",
+      trackStock: true,
+      isActive: true,
+      defaultSaleRate: "950.0000",
+    },
+  });
+  const chinos = await prisma.item.create({
+    data: {
+      companyId: company.id,
+      sku: "FG-CHINO",
+      name: "Chino Trousers",
+      category: "Saleable",
+      unit: "Pcs",
+      trackStock: true,
+      isActive: true,
+      defaultSaleRate: "1000.0000",
+    },
+  });
 
   // Opening capital JV
   const jv1 = await prisma.voucher.create({
@@ -215,35 +265,203 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
     },
   });
 
-  // Purchase on credit
+  // Opening stock journal
+  const stjVoucher = await prisma.voucher.create({
+    data: {
+      companyId: company.id,
+      voucherNo: "STJ-2024-0001",
+      voucherType: "STJ",
+      voucherDate: new Date("2024-07-01"),
+      narration: "Opening stock (demo)",
+      status: "POSTED",
+      createdBy: "demo",
+      postedBy: "demo",
+      postedAt: new Date("2024-07-01T10:30:00Z"),
+      lines: {
+        create: [
+          { accountId: stock, debit: "1540000.00", credit: "0.00", lineNarration: "Opening inventory" },
+          { accountId: capital, debit: "0.00", credit: "1540000.00", lineNarration: "Opening stock contra" },
+        ],
+      },
+    },
+  });
+
+  const openingStj = await prisma.stockAdjustment.create({
+    data: {
+      companyId: company.id,
+      voucherId: stjVoucher.id,
+      adjustmentNo: "STJ-2024-0001",
+      adjustmentDate: new Date("2024-07-01"),
+      reason: "OPENING",
+      narration: "Opening stock (demo)",
+      status: "POSTED",
+      createdBy: "demo",
+      postedBy: "demo",
+      postedAt: new Date("2024-07-01T10:30:00Z"),
+      lines: {
+        create: [
+          {
+            lineNo: 1,
+            itemId: fabric.id,
+            itemName: fabric.name,
+            direction: "IN",
+            quantity: "2000.0000",
+            unitCost: "400.0000",
+            amount: "800000.00",
+          },
+          {
+            lineNo: 2,
+            itemId: jeans.id,
+            itemName: jeans.name,
+            direction: "IN",
+            quantity: "800.0000",
+            unitCost: "600.0000",
+            amount: "480000.00",
+          },
+          {
+            lineNo: 3,
+            itemId: chinos.id,
+            itemName: chinos.name,
+            direction: "IN",
+            quantity: "400.0000",
+            unitCost: "650.0000",
+            amount: "260000.00",
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.stockMovement.createMany({
+    data: [
+      {
+        companyId: company.id,
+        itemId: fabric.id,
+        moveDate: new Date("2024-07-01"),
+        direction: "IN",
+        moveType: "OPENING",
+        quantity: "2000.0000",
+        unitCostCents: 40_000,
+        valueCents: 80_000_000,
+        voucherId: stjVoucher.id,
+        sourceDocument: "StockAdjustment",
+        sourceDocumentId: openingStj.id,
+        sourceLineNo: 1,
+        narration: fabric.name,
+      },
+      {
+        companyId: company.id,
+        itemId: jeans.id,
+        moveDate: new Date("2024-07-01"),
+        direction: "IN",
+        moveType: "OPENING",
+        quantity: "800.0000",
+        unitCostCents: 60_000,
+        valueCents: 48_000_000,
+        voucherId: stjVoucher.id,
+        sourceDocument: "StockAdjustment",
+        sourceDocumentId: openingStj.id,
+        sourceLineNo: 2,
+        narration: jeans.name,
+      },
+      {
+        companyId: company.id,
+        itemId: chinos.id,
+        moveDate: new Date("2024-07-01"),
+        direction: "IN",
+        moveType: "OPENING",
+        quantity: "400.0000",
+        unitCostCents: 65_000,
+        valueCents: 26_000_000,
+        voucherId: stjVoucher.id,
+        sourceDocument: "StockAdjustment",
+        sourceDocumentId: openingStj.id,
+        sourceLineNo: 3,
+        narration: chinos.name,
+      },
+    ],
+  });
+
+  // Purchase invoice on credit (perpetual: Dr 1020 / Cr 2001)
   const debtor = partyRows[0]!;
   const creditor = partyRows[2]!;
 
-  await prisma.voucher.create({
+  const piVoucher = await prisma.voucher.create({
     data: {
       companyId: company.id,
-      voucherNo: "JV-2024-0002",
-      voucherType: "JV",
+      voucherNo: "PI-2024-0001",
+      voucherType: "PI",
       voucherDate: new Date("2024-07-15"),
       partyId: creditor.id,
       partyName: creditor.name,
       partyNtn: creditor.ntn,
-      narration: "Fabric purchase on credit (demo)",
+      narration: "Greige fabric purchase on credit (demo)",
       status: "POSTED",
       createdBy: "demo",
       postedBy: "demo",
       postedAt: new Date("2024-07-15T11:00:00Z"),
       lines: {
         create: [
-          { accountId: purchases, debit: "850000.00", credit: "0.00", lineNarration: "Greige fabric" },
+          { accountId: stock, debit: "210000.00", credit: "0.00", lineNarration: "Greige fabric" },
           {
             accountId: creditors,
             debit: "0.00",
-            credit: "850000.00",
+            credit: "210000.00",
             lineNarration: "Payable to supplier",
           },
         ],
       },
+    },
+  });
+
+  const purchaseInvoice = await prisma.purchaseInvoice.create({
+    data: {
+      companyId: company.id,
+      voucherId: piVoucher.id,
+      invoiceNo: "PI-2024-0001",
+      invoiceDate: new Date("2024-07-15"),
+      partyId: creditor.id,
+      partyName: creditor.name,
+      partyNtn: creditor.ntn,
+      billNo: "CM-7781",
+      narration: "Greige fabric purchase on credit (demo)",
+      status: "POSTED",
+      totalAmount: "210000.00",
+      createdBy: "demo",
+      postedBy: "demo",
+      postedAt: new Date("2024-07-15T11:00:00Z"),
+      lines: {
+        create: [
+          {
+            lineNo: 1,
+            itemId: fabric.id,
+            itemName: fabric.name,
+            detail: "40s carded greige",
+            quantity: "500.0000",
+            rate: "420.0000",
+            amount: "210000.00",
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.stockMovement.create({
+    data: {
+      companyId: company.id,
+      itemId: fabric.id,
+      moveDate: new Date("2024-07-15"),
+      direction: "IN",
+      moveType: "PURCHASE",
+      quantity: "500.0000",
+      unitCostCents: 42_000,
+      valueCents: 21_000_000,
+      voucherId: piVoucher.id,
+      sourceDocument: "PurchaseInvoice",
+      sourceDocumentId: purchaseInvoice.id,
+      sourceLineNo: 1,
+      partyId: creditor.id,
+      narration: fabric.name,
     },
   });
 
@@ -264,14 +482,14 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
       postedAt: new Date("2024-08-05T09:30:00Z"),
       lines: {
         create: [
-          { accountId: creditors, debit: "530000.00", credit: "0.00", lineNarration: "Settle payable" },
-          { accountId: bank, debit: "0.00", credit: "530000.00", lineNarration: "HBL payment" },
+          { accountId: creditors, debit: "100000.00", credit: "0.00", lineNarration: "Settle payable" },
+          { accountId: bank, debit: "0.00", credit: "100000.00", lineNarration: "HBL payment" },
         ],
       },
     },
   });
 
-  // Sales invoice + SI voucher
+  // Sales invoice + SI voucher (revenue + COGS/stock)
   const siVoucher = await prisma.voucher.create({
     data: {
       companyId: company.id,
@@ -288,14 +506,23 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
       postedAt: new Date("2024-08-20T14:00:00Z"),
       lines: {
         create: [
-          { accountId: debtors, debit: "725000.00", credit: "0.00", lineNarration: "Trade receivable" },
+          {
+            accountId: byCode["1010-001"] ?? debtors,
+            debit: "725000.00",
+            credit: "0.00",
+            lineNarration: "Trade receivable",
+          },
           { accountId: sales, debit: "0.00", credit: "725000.00", lineNarration: "Taxable sales" },
+          { accountId: cogs, debit: "300000.00", credit: "0.00", lineNarration: jeans.name },
+          { accountId: stock, debit: "0.00", credit: "300000.00", lineNarration: jeans.name },
+          { accountId: cogs, debit: "162500.00", credit: "0.00", lineNarration: chinos.name },
+          { accountId: stock, debit: "0.00", credit: "162500.00", lineNarration: chinos.name },
         ],
       },
     },
   });
 
-  await prisma.salesInvoice.create({
+  const salesInvoice = await prisma.salesInvoice.create({
     data: {
       companyId: company.id,
       voucherId: siVoucher.id,
@@ -315,7 +542,8 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
         create: [
           {
             lineNo: 1,
-            item: "Denim Jeans — Slim Fit",
+            itemId: jeans.id,
+            item: jeans.name,
             detail: "Size assortment M/L/XL",
             quantity: "500.0000",
             rate: "950.0000",
@@ -323,7 +551,8 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
           },
           {
             lineNo: 2,
-            item: "Chino Trousers",
+            itemId: chinos.id,
+            item: chinos.name,
             detail: "Khaki / Navy mix",
             quantity: "250.0000",
             rate: "1000.0000",
@@ -332,6 +561,43 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
         ],
       },
     },
+  });
+
+  await prisma.stockMovement.createMany({
+    data: [
+      {
+        companyId: company.id,
+        itemId: jeans.id,
+        moveDate: new Date("2024-08-20"),
+        direction: "OUT",
+        moveType: "SALE",
+        quantity: "500.0000",
+        unitCostCents: 60_000,
+        valueCents: 30_000_000,
+        voucherId: siVoucher.id,
+        sourceDocument: "SalesInvoice",
+        sourceDocumentId: salesInvoice.id,
+        sourceLineNo: 1,
+        partyId: debtor.id,
+        narration: jeans.name,
+      },
+      {
+        companyId: company.id,
+        itemId: chinos.id,
+        moveDate: new Date("2024-08-20"),
+        direction: "OUT",
+        moveType: "SALE",
+        quantity: "250.0000",
+        unitCostCents: 65_000,
+        valueCents: 16_250_000,
+        voucherId: siVoucher.id,
+        sourceDocument: "SalesInvoice",
+        sourceDocumentId: salesInvoice.id,
+        sourceLineNo: 2,
+        partyId: debtor.id,
+        narration: chinos.name,
+      },
+    ],
   });
 
   // Bank receipt from debtor
@@ -422,5 +688,8 @@ export async function seedDemoTenant(prisma: PrismaClient): Promise<{
     parties: await prisma.party.count({ where: { companyId: company.id } }),
     vouchers: await prisma.voucher.count({ where: { companyId: company.id } }),
     salesInvoices: await prisma.salesInvoice.count({ where: { companyId: company.id } }),
+    purchaseInvoices: await prisma.purchaseInvoice.count({ where: { companyId: company.id } }),
+    stockAdjustments: await prisma.stockAdjustment.count({ where: { companyId: company.id } }),
+    items: await prisma.item.count({ where: { companyId: company.id } }),
   };
 }

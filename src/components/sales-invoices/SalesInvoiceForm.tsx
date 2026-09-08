@@ -3,21 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { ItemLov } from "@/components/items/ItemLov";
 import { PartyCreateModal } from "@/components/parties/PartyCreateModal";
 import { PrintButton } from "@/components/print/PrintButton";
 import { SalesInvoicePrint } from "@/components/sales-invoices/SalesInvoicePrint";
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
+import { amountCentsFromQtyAndRate, toQtyUnits } from "@/lib/accounting/quantity";
 import type { CompanyDTO } from "@/lib/company/types";
 import { formatCurrency } from "@/lib/formatting/money";
+import type { ItemDTO } from "@/lib/items/types";
 import type { PartyDTO } from "@/lib/parties/types";
 import { printDocument } from "@/lib/print/page";
 import type {
   SalesInvoiceDTO,
   SalesInvoiceInput,
 } from "@/lib/sales-invoices/types";
-import { toQuantityOrRate } from "@/lib/sales-invoices/validation";
 
 type LineDraft = {
+  itemId: string;
   item: string;
   detail: string;
   quantity: string;
@@ -30,6 +33,7 @@ type SalesInvoiceFormProps = {
   invoiceNo: string;
   initial?: SalesInvoiceDTO | null;
   parties: PartyDTO[];
+  items: ItemDTO[];
   company: CompanyDTO | null;
   autoPrint?: boolean;
   onBack: () => void;
@@ -41,14 +45,14 @@ function todayIso() {
 }
 
 function emptyLine(): LineDraft {
-  return { item: "", detail: "", quantity: "", rate: "", amount: "" };
+  return { itemId: "", item: "", detail: "", quantity: "", rate: "", amount: "" };
 }
 
 function computeAmount(quantity: string, rate: string): string {
-  const q = toQuantityOrRate(quantity);
-  const r = toQuantityOrRate(rate);
+  const q = toQtyUnits(quantity);
+  const r = toQtyUnits(rate);
   if (q === null || r === null) return "";
-  return centsToDecimalString(Math.round(q * r * 100));
+  return centsToDecimalString(amountCentsFromQtyAndRate(q, r));
 }
 
 export function SalesInvoiceForm({
@@ -56,6 +60,7 @@ export function SalesInvoiceForm({
   invoiceNo,
   initial,
   parties: initialParties,
+  items,
   company,
   autoPrint = false,
   onBack,
@@ -86,7 +91,8 @@ export function SalesInvoiceForm({
   const [narration, setNarration] = useState(initial?.narration ?? "");
   const [lines, setLines] = useState<LineDraft[]>(
     initial?.lines.length
-      ? initial.lines.map((line) => ({
+        ? initial.lines.map((line) => ({
+          itemId: line.itemId ?? "",
           item: line.item,
           detail: line.detail ?? "",
           quantity: line.quantity,
@@ -136,8 +142,9 @@ export function SalesInvoiceForm({
       poNumber,
       narration,
       lines: lines
-        .filter((line) => line.item.trim() || line.quantity || line.rate)
+        .filter((line) => line.item.trim() || line.itemId || line.quantity || line.rate)
         .map((line) => ({
+          itemId: line.itemId || null,
           item: line.item,
           detail: line.detail,
           quantity: line.quantity,
@@ -290,7 +297,8 @@ export function SalesInvoiceForm({
             {mode === "create" ? "New Sales Invoice" : `Sales Invoice ${invoiceNo}`}
           </h2>
           <p className="text-xs text-[var(--muted)]">
-            Posts Dr Trade Debtors (1010) / Cr Sales (4001) to the customer ledger.
+            Posts Dr Trade Debtors (1010) / Cr Sales (4001). Stock-tracked items also post Dr
+            COGS (5004) / Cr Stock (1020) at weighted average cost.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -426,12 +434,43 @@ export function SalesInvoiceForm({
                 {lines.map((line, index) => (
                   <tr key={index} className="border-b border-[var(--border)]/60">
                     <td className="px-2 py-1.5">
-                      <input
-                        className="field-input w-full min-w-[120px]"
-                        value={line.item}
-                        onChange={(e) => updateLine(index, "item", e.target.value)}
-                        placeholder="Item"
-                      />
+                      <div className="space-y-1">
+                        <ItemLov
+                          items={items.filter(
+                            (item) =>
+                              item.id === line.itemId ||
+                              (item.isActive && item.category === "Saleable"),
+                          )}
+                          value={line.itemId}
+                          disabled={readOnly}
+                          allowNone
+                          onChange={(itemId, item) => {
+                            setLines((prev) => {
+                              const next = [...prev];
+                              const row = { ...next[index], itemId };
+                              if (item) {
+                                row.item = item.name;
+                                if (!row.rate && item.defaultSaleRate) {
+                                  row.rate = item.defaultSaleRate;
+                                  row.amount = computeAmount(row.quantity, row.rate);
+                                }
+                              }
+                              next[index] = row;
+                              return next;
+                            });
+                            setError(null);
+                          }}
+                        />
+                        {!line.itemId ? (
+                          <input
+                            className="field-input w-full min-w-[120px]"
+                            value={line.item}
+                            disabled={readOnly}
+                            onChange={(e) => updateLine(index, "item", e.target.value)}
+                            placeholder="Free-text item"
+                          />
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-2 py-1.5">
                       <input

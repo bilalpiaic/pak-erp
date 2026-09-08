@@ -9,7 +9,7 @@ import { OriginLink } from "@/components/ui/OriginLink";
 import { formatCurrency } from "@/lib/formatting/money";
 import type { JournalLineDTO, JournalResult } from "@/lib/journal/service";
 import { accountLedgerHref, partyLedgerHref, voucherHref } from "@/lib/links";
-import { VOUCHER_TYPES } from "@/lib/vouchers/types";
+import { ALL_VOUCHER_TYPES } from "@/lib/vouchers/types";
 import { downloadCsv } from "@/lib/export/csv";
 
 type JournalViewProps = {
@@ -97,7 +97,7 @@ export function JournalView({ initial, loadError = null }: JournalViewProps) {
             className="field-input w-[110px]"
           >
             <option value="All">All</option>
-            {VOUCHER_TYPES.map((t) => (
+            {ALL_VOUCHER_TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>

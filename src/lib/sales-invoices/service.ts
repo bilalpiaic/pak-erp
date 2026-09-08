@@ -1,10 +1,18 @@
-import type { Prisma, SalesInvoice, SalesInvoiceLine } from "@/generated/prisma/client";
+import type { Prisma, SalesInvoice, SalesInvoiceLine, Item } from "@/generated/prisma/client";
 import { ACCOUNT_CODES } from "@/lib/accounts/codes";
 import { centsToDecimalString, toCents } from "@/lib/accounting/money";
+import { qtyUnitsToDecimalString, toQtyUnits } from "@/lib/accounting/quantity";
 import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
 import { serialize } from "@/lib/db/serialize";
+import { requireItem } from "@/lib/items/service";
 import { adjustPartyOutstanding } from "@/lib/parties/outstanding";
+import { resolveStockPostingAccounts } from "@/lib/stock/accounts";
+import {
+  deleteMovementsForDocument,
+  insertMovements,
+  prepareMovements,
+} from "@/lib/stock/service";
 import { nextVoucherNo } from "@/lib/vouchers/service";
 
 import type {
@@ -19,8 +27,9 @@ import {
 } from "./validation";
 
 type InvoiceWithRelations = SalesInvoice & {
-  lines: SalesInvoiceLine[];
+  lines: Array<SalesInvoiceLine & { stockItem?: Pick<Item, "sku"> | null }>;
   voucher: { id: bigint; voucherNo: string; status: string } | null;
+  party?: { accountId: bigint | null } | null;
 };
 
 async function requireCompanyId(): Promise<bigint> {
@@ -36,10 +45,8 @@ function decimalString(value: { toString(): string }, scale = 2): string {
     const cents = toCents(value.toString());
     return centsToDecimalString(cents ?? 0);
   }
-  const n = Number(value.toString());
-  if (!Number.isFinite(n)) return "0";
-  const fixed = n.toFixed(4).replace(/\.?0+$/, "");
-  return fixed.includes(".") ? fixed : `${fixed}.0`;
+  const n = toQtyUnits(value.toString());
+  return qtyUnitsToDecimalString(n ?? 0);
 }
 
 function toInvoiceDTO(row: InvoiceWithRelations): SalesInvoiceDTO {
@@ -70,7 +77,9 @@ function toInvoiceDTO(row: InvoiceWithRelations): SalesInvoiceDTO {
       .map((line) => ({
         id: line.id.toString(),
         lineNo: line.lineNo,
+        itemId: line.itemId?.toString() ?? null,
         item: line.item,
+        sku: line.stockItem?.sku ?? null,
         detail: line.detail,
         quantity: decimalString(line.quantity, 4),
         rate: decimalString(line.rate, 4),
@@ -80,8 +89,12 @@ function toInvoiceDTO(row: InvoiceWithRelations): SalesInvoiceDTO {
 }
 
 const invoiceInclude = {
-  lines: { orderBy: { lineNo: "asc" as const } },
+  lines: {
+    orderBy: { lineNo: "asc" as const },
+    include: { stockItem: { select: { sku: true } } },
+  },
   voucher: { select: { id: true, voucherNo: true, status: true } },
+  party: { select: { accountId: true } },
 };
 
 async function nextInvoiceNo(companyId: bigint): Promise<string> {
@@ -103,7 +116,10 @@ async function nextInvoiceNo(companyId: bigint): Promise<string> {
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
-export async function resolvePostingAccounts(companyId: bigint) {
+export async function resolvePostingAccounts(
+  companyId: bigint,
+  partyAccountId?: bigint | null,
+) {
   const prisma = getPrisma();
   const accounts = await prisma.account.findMany({
     where: {
@@ -113,20 +129,29 @@ export async function resolvePostingAccounts(companyId: bigint) {
     select: { id: true, code: true, name: true, isActive: true },
   });
 
-  const debtors = accounts.find((a) => a.code === ACCOUNT_CODES.TRADE_DEBTORS);
+  const controlDebtors = accounts.find((a) => a.code === ACCOUNT_CODES.TRADE_DEBTORS);
   const sales = accounts.find((a) => a.code === ACCOUNT_CODES.SALES_TAXABLE);
 
-  if (!debtors || !sales) {
+  if (!controlDebtors || !sales) {
     throw new Error(
       `Required accounts missing: need ${ACCOUNT_CODES.TRADE_DEBTORS} Trade Debtors and ${ACCOUNT_CODES.SALES_TAXABLE} Sales.`,
     );
   }
-  if (!debtors.isActive || !sales.isActive) {
+  if (!controlDebtors.isActive || !sales.isActive) {
     throw new Error(
-      `Inactive posting account(s): ${[!debtors.isActive && debtors.code, !sales.isActive && sales.code]
+      `Inactive posting account(s): ${[!controlDebtors.isActive && controlDebtors.code, !sales.isActive && sales.code]
         .filter(Boolean)
         .join(", ")}.`,
     );
+  }
+
+  let debtors = controlDebtors;
+  if (partyAccountId) {
+    const named = await prisma.account.findFirst({
+      where: { id: partyAccountId, companyId },
+      select: { id: true, code: true, name: true, isActive: true },
+    });
+    if (named?.isActive) debtors = named;
   }
 
   return { debtors, sales };
@@ -143,6 +168,136 @@ async function loadParty(companyId: bigint, partyId: string) {
     throw new Error("Sales invoices require a Debtor or Both party.");
   }
   return party;
+}
+
+function invoiceLineCreate(line: NormalizedInvoiceLine, index: number) {
+  return {
+    lineNo: index + 1,
+    itemId: line.itemId ? BigInt(line.itemId) : null,
+    item: line.item,
+    detail: line.detail,
+    quantity: line.quantity,
+    rate: line.rate,
+    amount: line.amount,
+  };
+}
+
+async function hydrateItemNames(
+  tx: Prisma.TransactionClient,
+  companyId: bigint,
+  lines: NormalizedInvoiceLine[],
+  requireActive: boolean,
+): Promise<NormalizedInvoiceLine[]> {
+  const result: NormalizedInvoiceLine[] = [];
+  for (const line of lines) {
+    if (!line.itemId) {
+      result.push(line);
+      continue;
+    }
+    const item = await requireItem(tx, companyId, BigInt(line.itemId), {
+      requireActive,
+      requireCategory: "Saleable",
+    });
+    result.push({ ...line, item: item.name || line.item });
+  }
+  return result;
+}
+
+async function applySalesStockOut(
+  tx: Prisma.TransactionClient,
+  args: {
+    companyId: bigint;
+    voucherId: bigint;
+    invoiceId: bigint;
+    invoiceDate: Date;
+    partyId: bigint;
+    lines: NormalizedInvoiceLine[];
+  },
+): Promise<number> {
+  const drafts = [];
+  for (const [index, line] of args.lines.entries()) {
+    if (!line.itemId) continue;
+    const item = await requireItem(tx, args.companyId, BigInt(line.itemId), {
+      requireActive: true,
+      requireCategory: "Saleable",
+    });
+    if (!item.trackStock) continue;
+    drafts.push({
+      itemId: item.id,
+      direction: "OUT" as const,
+      moveType: "SALE" as const,
+      qtyUnits: line.qtyUnits,
+      sourceLineNo: index + 1,
+      narration: item.name,
+      partyId: args.partyId,
+    });
+  }
+  if (!drafts.length) return 0;
+
+  const accounts = await resolveStockPostingAccounts(tx, args.companyId);
+  const prepared = await prepareMovements(tx, {
+    companyId: args.companyId,
+    moveDate: args.invoiceDate,
+    drafts,
+  });
+  await tx.voucherLine.createMany({
+    data: prepared.flatMap((row) => [
+      {
+        voucherId: args.voucherId,
+        accountId: accounts.cogs.id,
+        debit: centsToDecimalString(row.valueCents),
+        credit: "0.00",
+        lineNarration: row.narration,
+      },
+      {
+        voucherId: args.voucherId,
+        accountId: accounts.stock.id,
+        debit: "0.00",
+        credit: centsToDecimalString(row.valueCents),
+        lineNarration: row.narration,
+      },
+    ]),
+  });
+  await insertMovements(tx, {
+    companyId: args.companyId,
+    voucherId: args.voucherId,
+    moveDate: args.invoiceDate,
+    sourceDocument: "SalesInvoice",
+    sourceDocumentId: args.invoiceId,
+    prepared,
+  });
+  return prepared.reduce((sum, row) => sum + row.valueCents, 0);
+}
+
+/** Restore Dr COGS / Cr Stock lines from existing movements after a GL rewrite. */
+export async function reapplyCogsLinesFromMovements(
+  tx: Prisma.TransactionClient,
+  args: { companyId: bigint; voucherId: bigint; invoiceId: bigint },
+): Promise<void> {
+  const movements = await tx.stockMovement.findMany({
+    where: { sourceDocument: "SalesInvoice", sourceDocumentId: args.invoiceId },
+    orderBy: { sourceLineNo: "asc" },
+  });
+  if (!movements.length) return;
+  const accounts = await resolveStockPostingAccounts(tx, args.companyId);
+  await tx.voucherLine.createMany({
+    data: movements.flatMap((row) => [
+      {
+        voucherId: args.voucherId,
+        accountId: accounts.cogs.id,
+        debit: centsToDecimalString(row.valueCents),
+        credit: "0.00",
+        lineNarration: row.narration,
+      },
+      {
+        voucherId: args.voucherId,
+        accountId: accounts.stock.id,
+        debit: "0.00",
+        credit: centsToDecimalString(row.valueCents),
+        lineNarration: row.narration,
+      },
+    ]),
+  });
 }
 
 function lineNarration(lines: NormalizedInvoiceLine[]): string {
@@ -299,11 +454,12 @@ export async function createDraftSalesInvoice(
   const invoiceDate = parseInvoiceDate(input.invoiceDate)!;
   const invoiceNo = await nextInvoiceNo(companyId);
   const totalAmount = centsToDecimalString(validation.totalAmountCents);
-  const { debtors, sales } = await resolvePostingAccounts(companyId);
+  const { debtors, sales } = await resolvePostingAccounts(companyId, party.accountId);
 
   const created = await prisma.$transaction(async (tx) => {
+    const lines = await hydrateItemNames(tx, companyId, validation.lines, false);
     const voucherId =
-      validation.lines.length > 0
+      lines.length > 0
         ? await syncVoucherGl(tx, {
             companyId,
             voucherId: null,
@@ -314,7 +470,7 @@ export async function createDraftSalesInvoice(
             partyNtn: party.ntn,
             poNumber: input.poNumber?.trim() || null,
             narration: input.narration?.trim() || null,
-            lines: validation.lines,
+            lines,
             totalAmount,
             debtorsId: debtors.id,
             salesId: sales.id,
@@ -336,14 +492,7 @@ export async function createDraftSalesInvoice(
         totalAmount,
         createdBy: actor,
         lines: {
-          create: validation.lines.map((line, index) => ({
-            lineNo: index + 1,
-            item: line.item,
-            detail: line.detail,
-            quantity: line.quantity,
-            rate: line.rate,
-            amount: line.amount,
-          })),
+          create: lines.map((line, index) => invoiceLineCreate(line, index)),
         },
       },
       include: invoiceInclude,
@@ -388,7 +537,7 @@ export async function updateDraftSalesInvoice(
   const party = await loadParty(companyId, input.partyId);
   const invoiceDate = parseInvoiceDate(input.invoiceDate)!;
   const totalAmount = centsToDecimalString(validation.totalAmountCents);
-  const { debtors, sales } = await resolvePostingAccounts(companyId);
+  const { debtors, sales } = await resolvePostingAccounts(companyId, party.accountId);
 
   const updated = await prisma.$transaction(async (tx) => {
     const before = await tx.salesInvoice.findFirst({
@@ -402,10 +551,11 @@ export async function updateDraftSalesInvoice(
       );
     }
 
+    const lines = await hydrateItemNames(tx, companyId, validation.lines, false);
     await tx.salesInvoiceLine.deleteMany({ where: { salesInvoiceId: invoiceId } });
 
     let voucherId = before.voucherId;
-    if (validation.lines.length > 0) {
+    if (lines.length > 0) {
       voucherId = await syncVoucherGl(tx, {
         companyId,
         voucherId,
@@ -416,7 +566,7 @@ export async function updateDraftSalesInvoice(
         partyNtn: party.ntn,
         poNumber: input.poNumber?.trim() || null,
         narration: input.narration?.trim() || null,
-        lines: validation.lines,
+        lines,
         totalAmount,
         debtorsId: debtors.id,
         salesId: sales.id,
@@ -448,14 +598,7 @@ export async function updateDraftSalesInvoice(
         narration: input.narration?.trim() || null,
         totalAmount,
         lines: {
-          create: validation.lines.map((line, index) => ({
-            lineNo: index + 1,
-            item: line.item,
-            detail: line.detail,
-            quantity: line.quantity,
-            rate: line.rate,
-            amount: line.amount,
-          })),
+          create: lines.map((line, index) => invoiceLineCreate(line, index)),
         },
       },
       include: invoiceInclude,
@@ -500,6 +643,7 @@ export async function postSalesInvoice(id: string, actor = "system"): Promise<Sa
       poNumber: invoice.poNumber,
       narration: invoice.narration,
       lines: invoice.lines.map((line) => ({
+        itemId: line.itemId?.toString() ?? null,
         item: line.item,
         detail: line.detail,
         quantity: line.quantity.toString(),
@@ -513,7 +657,11 @@ export async function postSalesInvoice(id: string, actor = "system"): Promise<Sa
       throw new Error(validation.errors.join(" "));
     }
 
-    const { debtors, sales } = await resolvePostingAccounts(companyId);
+    const lines = await hydrateItemNames(tx, companyId, validation.lines, true);
+    const { debtors, sales } = await resolvePostingAccounts(
+      companyId,
+      invoice.party?.accountId ?? null,
+    );
     const totalAmount = centsToDecimalString(validation.totalAmountCents);
 
     const voucherId = await syncVoucherGl(tx, {
@@ -526,7 +674,7 @@ export async function postSalesInvoice(id: string, actor = "system"): Promise<Sa
       partyNtn: invoice.partyNtn,
       poNumber: invoice.poNumber,
       narration: invoice.narration,
-      lines: validation.lines,
+      lines,
       totalAmount,
       debtorsId: debtors.id,
       salesId: sales.id,
@@ -539,6 +687,15 @@ export async function postSalesInvoice(id: string, actor = "system"): Promise<Sa
     if (!voucher || voucher.status !== "DRAFT") {
       throw new Error("Linked voucher is not available for posting.");
     }
+
+    const cogsCents = await applySalesStockOut(tx, {
+      companyId,
+      voucherId,
+      invoiceId,
+      invoiceDate: invoice.invoiceDate,
+      partyId: invoice.partyId,
+      lines,
+    });
 
     await tx.voucher.update({
       where: { id: voucherId },
@@ -567,17 +724,11 @@ export async function postSalesInvoice(id: string, actor = "system"): Promise<Sa
       },
     });
 
-    // Replace lines with validated ones in case they drifted
     await tx.salesInvoiceLine.deleteMany({ where: { salesInvoiceId: invoiceId } });
     await tx.salesInvoiceLine.createMany({
-      data: validation.lines.map((line, index) => ({
+      data: lines.map((line, index) => ({
         salesInvoiceId: invoiceId,
-        lineNo: index + 1,
-        item: line.item,
-        detail: line.detail,
-        quantity: line.quantity,
-        rate: line.rate,
-        amount: line.amount,
+        ...invoiceLineCreate(line, index),
       })),
     });
 
@@ -598,7 +749,9 @@ export async function postSalesInvoice(id: string, actor = "system"): Promise<Sa
           status: "POSTED",
           totalAmount,
           voucherNo: voucher.voucherNo,
-          posting: `Dr ${ACCOUNT_CODES.TRADE_DEBTORS} / Cr ${ACCOUNT_CODES.SALES_TAXABLE}`,
+          posting: cogsCents
+            ? `Dr ${ACCOUNT_CODES.TRADE_DEBTORS} / Cr ${ACCOUNT_CODES.SALES_TAXABLE}; Dr ${ACCOUNT_CODES.COGS} / Cr ${ACCOUNT_CODES.STOCK_IN_TRADE}`
+            : `Dr ${ACCOUNT_CODES.TRADE_DEBTORS} / Cr ${ACCOUNT_CODES.SALES_TAXABLE}`,
         },
       },
     });
@@ -691,11 +844,42 @@ export async function unpostSalesInvoice(id: string, actor = "system"): Promise<
       throw new Error("Only posted sales invoices can be unposted.");
     }
 
+    await deleteMovementsForDocument(tx, "SalesInvoice", invoiceId);
+
     if (invoice.voucherId) {
       const voucher = await tx.voucher.findFirst({
         where: { id: invoice.voucherId, companyId },
       });
       if (voucher && voucher.status === "POSTED") {
+        const { debtors, sales } = await resolvePostingAccounts(
+          companyId,
+          invoice.party?.accountId ?? null,
+        );
+        const lines = invoice.lines.map((line) => ({
+          itemId: line.itemId?.toString() ?? null,
+          item: line.item,
+          detail: line.detail,
+          quantity: decimalString(line.quantity, 4),
+          rate: decimalString(line.rate, 4),
+          amount: decimalString(line.amount),
+          amountCents: toCents(line.amount.toString()) ?? 0,
+          qtyUnits: toQtyUnits(line.quantity.toString()) ?? 0,
+        }));
+        await syncVoucherGl(tx, {
+          companyId,
+          voucherId: invoice.voucherId,
+          invoiceNo: invoice.invoiceNo,
+          invoiceDate: invoice.invoiceDate,
+          partyId: invoice.partyId,
+          partyName: invoice.partyName,
+          partyNtn: invoice.partyNtn,
+          poNumber: invoice.poNumber,
+          narration: invoice.narration,
+          lines,
+          totalAmount: decimalString(invoice.totalAmount),
+          debtorsId: debtors.id,
+          salesId: sales.id,
+        });
         await tx.voucher.update({
           where: { id: voucher.id },
           data: {

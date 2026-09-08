@@ -4,7 +4,7 @@ import { getPrimaryCompany } from "@/lib/company/service";
 import { getPrisma } from "@/lib/db/prisma";
 import { adjustPartyOutstanding } from "@/lib/parties/outstanding";
 
-import { resolvePostingAccounts, syncVoucherGl } from "./service";
+import { resolvePostingAccounts, reapplyCogsLinesFromMovements, syncVoucherGl } from "./service";
 import type { NormalizedInvoiceLine } from "./validation";
 import type {
   SiReconcileIssue,
@@ -34,17 +34,33 @@ function voucherDebit(voucher: { lines: VoucherLine[] } | null): string {
   return centsToDecimalString(cents);
 }
 
+function voucherSalesCredit(voucher: { lines: Array<VoucherLine & { account?: { plSection?: string; code?: string } }> } | null): string {
+  if (!voucher) return "0.00";
+  const cents = voucher.lines.reduce((sum, line) => {
+    const isSales =
+      line.account?.plSection === "Sales" ||
+      line.account?.code === "4001" ||
+      line.account?.code === "4002";
+    if (!isSales) return sum;
+    return sum + (toCents(line.credit.toString()) ?? 0);
+  }, 0);
+  if (cents > 0) return centsToDecimalString(cents);
+  return voucherDebit(voucher);
+}
+
 function toNormalizedLines(invoice: InvoiceRow): NormalizedInvoiceLine[] {
   return invoice.lines
     .slice()
     .sort((a, b) => a.lineNo - b.lineNo)
     .map((line) => ({
+      itemId: line.itemId?.toString() ?? null,
       item: line.item,
       detail: line.detail,
       quantity: line.quantity.toString(),
       rate: line.rate.toString(),
       amount: money(line.amount),
       amountCents: toCents(line.amount.toString()) ?? 0,
+      qtyUnits: 0,
     }));
 }
 
@@ -83,7 +99,7 @@ function collectIssues(invoice: InvoiceRow, voucher: (Voucher & { lines: Voucher
     });
   }
   const invAmt = money(invoice.totalAmount);
-  const vAmt = voucherDebit(voucher);
+  const vAmt = voucherSalesCredit(voucher);
   if (invoice.status !== "DRAFT" && invAmt !== vAmt) {
     issues.push({
       ...base,
@@ -164,7 +180,7 @@ export async function reconcileSalesInvoiceVouchers(
       where: { companyId },
       include: {
         lines: { orderBy: { lineNo: "asc" } },
-        voucher: { include: { lines: true } },
+        voucher: { include: { lines: { include: { account: { select: { code: true, plSection: true } } } } } },
       },
       orderBy: { id: "asc" },
     }),
@@ -263,6 +279,13 @@ export async function reconcileSalesInvoiceVouchers(
             debtorsId: debtors.id,
             salesId: sales.id,
           });
+          if (voucherId) {
+            await reapplyCogsLinesFromMovements(tx, {
+              companyId,
+              voucherId,
+              invoiceId: invoice.id,
+            });
+          }
         } else if (!voucherId) {
           return;
         }
@@ -324,7 +347,7 @@ export async function reconcileSalesInvoiceVouchers(
         where: { companyId },
         include: {
           lines: { orderBy: { lineNo: "asc" } },
-          voucher: { include: { lines: true } },
+          voucher: { include: { lines: { include: { account: { select: { code: true, plSection: true } } } } } },
         },
       }),
       prisma.voucher.findMany({
