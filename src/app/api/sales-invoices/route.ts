@@ -54,7 +54,9 @@ export async function POST(request: Request) {
       message.includes("invalid") ||
       message.includes("Inactive") ||
       message.includes("missing") ||
-      message.includes("Debtor")
+      message.includes("Debtor") ||
+      message.includes("saleable") ||
+      message.includes("consumable")
         ? 400
         : 500;
     console.error("POST /api/sales-invoices", error);

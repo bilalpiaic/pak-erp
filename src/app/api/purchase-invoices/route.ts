@@ -49,7 +49,9 @@ export async function POST(request: Request) {
       message.includes("must") ||
       message.includes("inactive") ||
       message.includes("Creditor") ||
-      message.includes("Insufficient")
+      message.includes("Insufficient") ||
+      message.includes("saleable") ||
+      message.includes("consumable")
         ? 400
         : 500;
     console.error("POST /api/purchase-invoices", error);

@@ -38,7 +38,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     const message = error instanceof Error ? error.message : "Failed to update purchase invoice.";
     const status = message.includes("not found")
       ? 404
-      : message.includes("Only draft") || message.includes("required") || message.includes("must")
+      : message.includes("Only draft") ||
+          message.includes("required") ||
+          message.includes("must") ||
+          message.includes("saleable") ||
+          message.includes("consumable")
         ? 400
         : 500;
     console.error("PATCH /api/purchase-invoices/[id]", error);

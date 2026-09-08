@@ -46,7 +46,9 @@ export async function PATCH(request: Request, context: RouteContext) {
       ? 404
       : message.includes("Only draft") ||
           message.includes("required") ||
-          message.includes("must")
+          message.includes("must") ||
+          message.includes("saleable") ||
+          message.includes("consumable")
         ? 400
         : 500;
     console.error("PATCH /api/sales-invoices/[id]", error);
