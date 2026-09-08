@@ -38,7 +38,7 @@ describe("weighted average cost", () => {
     assert.equal(issued.unitCostCents, 15_000);
     assert.equal(issued.onHand.qtyUnits, 15 * QTY_SCALE);
     assert.equal(issued.onHand.valueCents, 225_000);
-    assert.equal(wacCents(issued.onHand), 1500);
+    assert.equal(wacCents(issued.onHand), 15_000);
   });
 
   it("full issue absorbs remainder cents", () => {
